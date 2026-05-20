@@ -4,9 +4,19 @@ import { useTheme } from 'next-themes'
 import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+
+const navLinks = [
+  { href: '/home', label: 'Home' },
+  { href: '/problems', label: 'Problems' },
+  { href: '/discuss', label: 'Discuss' },
+  { href: '/workspace', label: 'Workspace' },
+]
 
 export function NavHeader() {
   const { theme, setTheme } = useTheme()
+  const pathname = usePathname()
 
   return (
     <header className="border-b border-border bg-card sticky top-0 z-50">
@@ -19,26 +29,28 @@ export function NavHeader() {
               </div>
               <span className="font-bold text-foreground hidden sm:inline">Next Code Judge</span>
             </Link>
-            
+
             <nav className="hidden md:flex items-center gap-6">
-              <Link 
-                href="/problems" 
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Problems
-              </Link>
-              <Link 
-                href="/contests" 
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Contests
-              </Link>
-              <Link 
-                href="/discuss" 
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Discuss
-              </Link>
+              {navLinks.map(({ href, label }) => {
+                const isActive =
+                  href === '/home'
+                    ? pathname === '/home'
+                    : pathname.startsWith(href)
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      'text-sm font-medium transition-colors',
+                      isActive
+                        ? 'text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {label}
+                  </Link>
+                )
+              })}
             </nav>
           </div>
 
