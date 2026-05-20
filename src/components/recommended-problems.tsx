@@ -1,0 +1,87 @@
+'use client'
+
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { ArrowRight } from 'lucide-react'
+
+interface RecommendedProblem {
+  id: number
+  title: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  reason: string
+}
+
+const recommendedProblems: RecommendedProblem[] = [
+  {
+    id: 11,
+    title: 'Container With Most Water',
+    difficulty: 'Medium',
+    reason: 'Popular interview question',
+  },
+  {
+    id: 15,
+    title: '3Sum',
+    difficulty: 'Medium',
+    reason: 'Based on your history',
+  },
+  {
+    id: 4,
+    title: 'Median of Two Sorted Arrays',
+    difficulty: 'Hard',
+    reason: 'Challenge yourself',
+  },
+]
+
+function getDifficultyColor(difficulty: string) {
+  switch (difficulty) {
+    case 'Easy':
+      return 'text-easy'
+    case 'Medium':
+      return 'text-medium'
+    case 'Hard':
+      return 'text-hard'
+    default:
+      return 'text-muted-foreground'
+  }
+}
+
+export function RecommendedProblems() {
+  return (
+    <Card className="border border-border bg-card p-6">
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">Recommended</h3>
+          <p className="text-sm text-muted-foreground">
+            Curated for you
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {recommendedProblems.map((problem) => (
+            <div
+              key={problem.id}
+              className="group rounded-lg border border-border bg-muted/50 p-3 transition-all hover:bg-muted"
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <span className={`text-xs font-semibold ${getDifficultyColor(problem.difficulty)}`}>
+                  {problem.difficulty}
+                </span>
+                <ArrowRight className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              </div>
+              <p className="text-xs font-medium text-foreground line-clamp-2">
+                {problem.title}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {problem.reason}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <Button className="w-full" variant="default">
+          View More Recommendations
+        </Button>
+      </div>
+    </Card>
+  )
+}
