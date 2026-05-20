@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Settings, HelpCircle } from 'lucide-react'
 import {
   Select,
@@ -30,24 +30,37 @@ var twoSum = function(nums, target) {
     return [];
 };`
 
+const languages = [
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'typescript', label: 'TypeScript' },
+]
+
 export function EditorPanel({ onShowAI }: { onShowAI: () => void }) {
   const [language, setLanguage] = useState('javascript')
   const [code, setCode] = useState(defaultCode)
 
-  const languages = [
-    { value: 'javascript', label: 'JavaScript' },
-    { value: 'python', label: 'Python' },
-    { value: 'java', label: 'Java' },
-    { value: 'cpp', label: 'C++' },
-    { value: 'typescript', label: 'TypeScript' },
-  ]
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const lineNumbersRef = useRef<HTMLDivElement>(null)
+
+  // Keep line-number gutter in sync with textarea scroll
+  const syncScroll = useCallback(() => {
+    if (lineNumbersRef.current && textareaRef.current) {
+      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop
+    }
+  }, [])
+
+  const lineCount = code.split('\n').length
 
   return (
-    <div className="h-full flex flex-col bg-background border-r border-border">
-      {/* Editor Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+    <div className="h-full flex flex-col bg-background min-h-0">
+
+      {/* ── Editor header ── */}
+      <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-border bg-card">
         <Select value={language} onValueChange={setLanguage}>
-          <SelectTrigger className="w-40 h-9">
+          <SelectTrigger className="w-40 h-8 text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -59,13 +72,8 @@ export function EditorPanel({ onShowAI }: { onShowAI: () => void }) {
           </SelectContent>
         </Select>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            title="Settings"
-          >
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Settings">
             <Settings className="h-4 w-4" />
           </Button>
           <Button
@@ -80,27 +88,52 @@ export function EditorPanel({ onShowAI }: { onShowAI: () => void }) {
         </div>
       </div>
 
-      {/* Code Editor */}
-      <div className="flex-1 overflow-hidden flex">
-        {/* Line Numbers */}
-        <div className="flex flex-col bg-muted text-muted-foreground text-xs font-mono select-none pt-4 px-2 border-r border-border">
-          {code.split('\n').map((_, i) => (
-            <div key={i} className="leading-6 h-6 text-right">
+      {/* ── Code editor body ── */}
+      {/*
+        flex-1 + min-h-0: fills remaining panel height.
+        overflow-hidden on the row so line-numbers + textarea
+        scroll together as a unit.
+      */}
+      <div className="flex-1 min-h-0 overflow-hidden flex font-mono text-xs">
+
+        {/* Line numbers — overflow-hidden, scrolled programmatically */}
+        <div
+          ref={lineNumbersRef}
+          aria-hidden="true"
+          className="
+            select-none overflow-hidden shrink-0
+            bg-muted text-muted-foreground
+            border-r border-border
+            pt-4 px-3
+          "
+          style={{ lineHeight: '1.5rem' }}
+        >
+          {Array.from({ length: lineCount }, (_, i) => (
+            <div key={i} className="h-6 text-right leading-6">
               {i + 1}
             </div>
           ))}
         </div>
 
-        {/* Code Area */}
+        {/* Code textarea */}
         <textarea
+          ref={textareaRef}
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          className="flex-1 bg-background text-foreground font-mono text-xs p-4 resize-none focus:outline-none border-none overflow-y-auto"
-          spellCheck="false"
-          style={{
-            lineHeight: '1.5',
-            tabSize: 2,
-          }}
+          onScroll={syncScroll}
+          className="
+            flex-1 min-w-0
+            bg-background text-foreground
+            font-mono text-xs
+            p-4 pt-4
+            resize-none
+            focus:outline-none
+            overflow-y-auto overflow-x-auto
+          "
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          style={{ lineHeight: '1.5rem', tabSize: 2 }}
         />
       </div>
     </div>
