@@ -9,7 +9,7 @@ import {
 import { ProblemPanel } from './problem-panel'
 import { EditorPanel } from './editor-panel'
 import { ConsolePanel } from './console-panel'
-import { AIChatPanel } from './ai-chat-panel'
+import { AIChatPanel } from "@/modules/ai/components/ai-chat-panel";
 
 export function CodeWorkspace() {
   const [showAIChat, setShowAIChat] = useState(false)

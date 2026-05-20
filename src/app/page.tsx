@@ -1,62 +1,64 @@
-'use client'
+import Link from "next/link";
 
-import { useState } from 'react'
-import { Header } from '@/components/header'
-import { FilterBar } from '@/components/filter-bar'
-import { ProblemsTable } from '@/components/problems-table'
-import { Pagination } from '@/components/problems-pagination'
-import { ProgressCard } from '@/components/progress-card'
-import { RecommendedProblems } from '@/components/recommended-problems'
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
-export default function Home() {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('')
-  const [selectedTopic, setSelectedTopic] = useState<string>('')
-  const [searchQuery, setSearchQuery] = useState<string>('')
+const features = [
+  {
+    title: "Practice Coding",
+    description:
+      "Solve algorithm problems by difficulty, topic, and learning path.",
+  },
+  {
+    title: "Automatic Judging",
+    description:
+      "Run and submit code with automated evaluation powered by Judge0.",
+  },
+  {
+    title: "Multi-agent AI Mentor",
+    description:
+      "Get hints, error analysis, and code review from specialized AI agents.",
+  },
+];
 
-  const itemsPerPage = 10
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-8 lg:flex-row">
-          {/* Left column - 75% */}
-          <div className="flex-1 space-y-6">
-            <FilterBar
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              selectedDifficulty={selectedDifficulty}
-              onDifficultyChange={setSelectedDifficulty}
-              selectedTopic={selectedTopic}
-              onTopicChange={setSelectedTopic}
-            />
-            
-            <ProblemsTable
-              currentPage={currentPage}
-              itemsPerPage={itemsPerPage}
-              searchQuery={searchQuery}
-              selectedDifficulty={selectedDifficulty}
-              selectedTopic={selectedTopic}
-            />
-            
-            <Pagination
-              currentPage={currentPage}
-              totalPages={5}
-              onPageChange={setCurrentPage}
-            />
-          </div>
+    <main className="min-h-screen bg-background">
+      <section className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-20 text-center">
+        <div className="max-w-3xl space-y-6">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
+            Next Code Judge AI
+          </h1>
 
-          {/* Right column - 25% */}
-          <aside className="lg:w-1/4">
-            <div className="sticky top-8 space-y-6">
-              <ProgressCard />
-              <RecommendedProblems />
-            </div>
-          </aside>
+          <p className="text-lg text-muted-foreground sm:text-xl">
+            An online coding practice platform with automatic code judging and
+            a multi-agent AI mentor.
+          </p>
+
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Button asChild size="lg">
+              <Link href="/home">Go to Dashboard</Link>
+            </Button>
+
+            <Button asChild variant="outline" size="lg">
+              <Link href="/workspace">Open Workspace</Link>
+            </Button>
+          </div>
         </div>
-      </main>
-    </div>
-  )
+
+        <div className="mt-16 grid w-full gap-6 md:grid-cols-3">
+          {features.map((feature) => (
+            <Card key={feature.title}>
+              <CardContent className="space-y-3 p-6 text-left">
+                <h2 className="text-xl font-semibold">{feature.title}</h2>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {feature.description}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
 }
