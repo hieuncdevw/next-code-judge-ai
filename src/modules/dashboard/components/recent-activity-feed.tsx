@@ -5,6 +5,8 @@ import Link from 'next/link'
 interface Submission {
   id: string
   problemTitle: string
+  /** Slug used to navigate to /workspace?problem={slug} */
+  problemSlug: string
   status: 'accepted' | 'wrong_answer'
   executionTime: number
   timestamp: string
@@ -15,11 +17,11 @@ interface RecentActivityFeedProps {
 }
 
 const defaultSubmissions: Submission[] = [
-  { id: '1', problemTitle: 'Two Sum', status: 'accepted', executionTime: 15, timestamp: '2 hours ago' },
-  { id: '2', problemTitle: 'Add Two Numbers', status: 'accepted', executionTime: 24, timestamp: '5 hours ago' },
-  { id: '3', problemTitle: 'Longest Substring', status: 'wrong_answer', executionTime: 8, timestamp: '1 day ago' },
-  { id: '4', problemTitle: 'Median of Two Sorted', status: 'accepted', executionTime: 12, timestamp: '2 days ago' },
-  { id: '5', problemTitle: 'Zigzag Conversion', status: 'accepted', executionTime: 3, timestamp: '3 days ago' },
+  { id: '1', problemTitle: 'Two Sum', problemSlug: 'two-sum', status: 'accepted', executionTime: 15, timestamp: '2 hours ago' },
+  { id: '2', problemTitle: 'Add Two Numbers', problemSlug: 'add-two-numbers', status: 'accepted', executionTime: 24, timestamp: '5 hours ago' },
+  { id: '3', problemTitle: 'Longest Substring', problemSlug: 'longest-substring-without-repeating-characters', status: 'wrong_answer', executionTime: 8, timestamp: '1 day ago' },
+  { id: '4', problemTitle: 'Median of Two Sorted', problemSlug: 'median-of-two-sorted-arrays', status: 'accepted', executionTime: 12, timestamp: '2 days ago' },
+  { id: '5', problemTitle: 'Zigzag Conversion', problemSlug: 'zigzag-conversion', status: 'accepted', executionTime: 3, timestamp: '3 days ago' },
 ]
 
 export function RecentActivityFeed({ submissions = defaultSubmissions }: RecentActivityFeedProps) {
@@ -31,7 +33,7 @@ export function RecentActivityFeed({ submissions = defaultSubmissions }: RecentA
         {submissions.map((submission) => (
           <Link 
             key={submission.id}
-            href={`/workspace?id=${submission.id}`}
+          href={`/workspace?problem=${submission.problemSlug}`}
             className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors"
           >
             <div className="flex items-center gap-3 flex-1 min-w-0">

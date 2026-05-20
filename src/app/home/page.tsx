@@ -8,13 +8,56 @@ import { GlobalLeaderboard } from "@/modules/dashboard/components/global-leaderb
 import { DailyChallengeCard } from "@/modules/problems/components/daily-challenge-card";
 
 import { AIMentorTip } from "@/modules/ai/components/ai-mentor-tip";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export const metadata = {
   title: 'Home - Next Code Judge',
   description: 'Your learning dashboard for coding problems',
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  let submissions: any[] | undefined = undefined;
+
+  try {
+    const user = await getCurrentUser()
+    const dbSubmissions = await prisma.submission.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      include: { problem: true },
+      take: 5,
+    })
+
+    if (dbSubmissions.length > 0) {
+      submissions = dbSubmissions.map((sub) => {
+        const diffMs = Date.now() - sub.createdAt.getTime()
+        const diffMins = Math.floor(diffMs / 60000)
+        const diffHours = Math.floor(diffMins / 60)
+        const diffDays = Math.floor(diffHours / 24)
+
+        let timestamp = 'Just now'
+        if (diffDays > 0) {
+          timestamp = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+        } else if (diffHours > 0) {
+          timestamp = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+        } else if (diffMins > 0) {
+          timestamp = `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+        }
+
+        return {
+          id: sub.id,
+          problemTitle: sub.problem.title,
+          problemSlug: sub.problem.slug,
+          status: sub.status === 'ACCEPTED' ? 'accepted' : 'wrong_answer',
+          executionTime: sub.runtimeMs ?? 0,
+          timestamp,
+        }
+      })
+    }
+  } catch (err) {
+    console.error('[HomePage] failed to fetch recent submissions:', err)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <NavHeader />
@@ -33,11 +76,11 @@ export default function HomePage() {
               difficulty="Easy"
               acceptanceRate={47.3}
               description="Given an array of integers nums and an integer target, return the indices of the two numbers that add up to target."
-              problemId="1"
+              problemSlug="two-sum"
             />
 
             {/* Recent Submissions */}
-            <RecentActivityFeed />
+            <RecentActivityFeed submissions={submissions} />
           </div>
 
           {/* Right Section (33% width) */}
