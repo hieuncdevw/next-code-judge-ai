@@ -296,3 +296,154 @@ page.tsx (async Server Component)
 - [ ] `Contests` page: link trong NavHeader cũ, không có trong nav mới — xem xét thêm hoặc bỏ.
 - [ ] Auth (Clerk): chưa tích hợp — các trang hiện tại không yêu cầu đăng nhập.
 - [ ] `solved` status trên ProblemsTable: đã bỏ icon Check/Circle vì chưa có auth context.
+
+---
+
+## 5a. ProblemPanel - Submissions tab (da hoan thanh)
+
+> **Cap nhat:** Submissions tab da duoc implement day du, khong con la `[TODO]`.
+
+### Props hien tai
+
+```ts
+interface ProblemPanelProps {
+  problem: WorkspaceProblem | null
+  submissions: SubmissionResult[]  // <-- them prop nay
+}
+```
+
+`submissions` duoc truyen tu `CodeWorkspace` sau moi lan Run Code.
+
+### Hien thi trong Submissions tab
+
+- **Badge mau** theo `SubmissionResult.status`:
+  - `ACCEPTED` -> emerald
+  - `WRONG_ANSWER` -> rose
+  - `COMPILE_ERROR` -> amber
+  - `RUNTIME_ERROR` -> orange
+  - `TIME_LIMIT_EXCEEDED` -> purple
+- **Timestamp** dinh dang `vi-VN`.
+- **Runtime** (Clock icon) + **Memory** (Cpu icon): chi hien khi co.
+- **Error message**: `pre` block, `whitespace-pre-wrap overflow-x-auto`.
+- **Counter badge** tren tab trigger: `{submissions.length}` khi > 0.
+- **Inactive tab** an bang `data-[state=inactive]:hidden` (khong chiem layout).
+
+---
+
+## 6a. CodeWorkspace - Shared state architecture
+
+> **Cap nhat:** State `code`, `language`, `submissions` da duoc lift len `CodeWorkspace`.
+
+### State ownership
+
+```
+CodeWorkspace (Client Component)
+├── code: string           (useState - default code JavaScript)
+├── language: string       (useState - default 'javascript')
+├── submissions: SubmissionResult[]  (useState - append moi nhat len dau)
+├── showAIChat: boolean    (useState)
+│
+├── EditorPanel  <- nhan: code, language, onCodeChange, onLanguageChange, onShowAI
+├── ConsolePanel <- nhan: code, language, problemId, onSubmissionResult
+└── ProblemPanel <- nhan: problem, submissions
+```
+
+### Ask AI button
+
+- Dat trong sub-header `CodeWorkspace` (khong phai EditorPanel rieng).
+- Icon `HelpCircle` trong EditorPanel header cung trigger AI panel qua `onShowAI` prop.
+- Label: "Ask AI" khi dong, "Close AI" khi mo.
+- Mau: `bg-blue-600 hover:bg-blue-700 text-white`.
+
+### Submit button
+
+- Da bo khoi CodeWorkspace sub-header trong phien ban hien tai.
+- Hành dong chinh chi co **Run Code** trong ConsolePanel (full-width, emerald).
+
+---
+
+## 7a. EditorPanel - Controlled component (update)
+
+> **Cap nhat:** EditorPanel khong con co local state cho `code` va `language`.
+
+### Interface
+
+```ts
+interface EditorPanelProps {
+  code: string
+  language: string
+  onCodeChange: (code: string) => void
+  onLanguageChange: (language: string) => void
+  onShowAI: () => void
+}
+```
+
+### Layout ben trong
+
+```
+EditorPanel (h-full flex flex-col min-h-0)
+  header (shrink-0)
+    Select language (w-40 h-8)
+    Settings icon button
+    HelpCircle icon button (trigger AI)
+  body (flex-1 min-h-0 overflow-hidden flex)
+    line-number gutter (shrink-0 overflow-hidden bg-muted)
+    textarea (flex-1 overflow-y-auto overflow-x-auto resize-none)
+```
+
+---
+
+## 10a. Data flow update - /workspace page (sau khi implement)
+
+```
+page.tsx (async Server Component)
+  await searchParams           <- Next.js 15: searchParams la Promise
+  resolvedSlug = slug[0] | slug | undefined
+  problem = resolvedSlug
+    ? getProblemBySlug(resolvedSlug)  <- Prisma: tra null neu slug khong ton tai
+    : null
+
+  <CodeWorkspace problem={problem}>   (Client Component 'use client')
+    useState: code, language, submissions[], showAIChat
+    |
+    +-- <ProblemPanel problem submissions>
+    |       TabsContent Description: hien full content hoac fallback
+    |       TabsContent Submissions: lich su SubmissionResult[]
+    |
+    +-- <EditorPanel code language onCodeChange onLanguageChange onShowAI>
+    |       Controlled textarea, line number sync
+    |
+    +-- <ConsolePanel code language problemId onSubmissionResult>
+    |       useTransition -> runCode() Server Action
+    |       TabsContent TestCases: mock test cases
+    |       TabsContent Result: status banner + stats + error + per-test
+    |
+    +-- [showAIChat] <AIChatPanel onClose>
+            fetch POST /api/ai/chat -> ReadableStream streaming
+            onKeyDown (khong phai onKeyPress)
+            blinking cursor, auto-scroll, disable input khi streaming
+```
+
+---
+
+## 11a. [TODO] Update - Workflow da hoan thanh
+
+Cac hang trong muc 11 [TODO] da duoc cap nhat:
+
+| Item | Trang thai truoc | Trang thai hien tai |
+|---|---|---|
+| Submissions tab trong ProblemPanel | `[TODO]` placeholder | ✅ Hien thi lich su submissions |
+| `handleSubmit` trong CodeWorkspace | placeholder console.log | ✅ Da bo, chi con Run Code |
+| `handleRunCode` trong ConsolePanel | `setTimeout` mock | ✅ `runCode()` Server Action that |
+| AI Agent streaming | `setTimeout` mock | ✅ Route Handler ReadableStream |
+| `onKeyPress` deprecated | Con dung | ✅ Da doi sang `onKeyDown` |
+| `min-h-0` AIChatPanel | Thieu | ✅ Da them |
+
+Van con `[TODO]`:
+- [ ] Filter tags trong FilterBar: danh sach topics hardcoded.
+- [ ] `Discuss` page: route `/discuss` chua duoc tao.
+- [ ] Auth (Clerk): chua tich hop.
+- [ ] `solved` status tren ProblemsTable: can auth context.
+- [ ] Judge0 API that: hien tai `runCode()` gia lap.
+- [ ] AI provider that (OpenAI/Gemini): hien tai gia lap bang `buildReply()`.
+
