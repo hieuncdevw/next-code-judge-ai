@@ -9,7 +9,6 @@ Phát triển hệ thống luyện tập lập trình trực tuyến tích hợp
 Đây là hệ thống luyện tập lập trình trực tuyến cho phép người dùng giải bài tập thuật toán, chạy thử mã nguồn, submit bài làm và nhận kết quả chấm tự động. Hệ thống tích hợp trợ lý AI đa tác vụ nhằm hỗ trợ phân tích lỗi, tạo gợi ý và review code.
 
 ## Công nghệ sử dụng
-
 - Next.js 15
 - TypeScript
 - Tailwind CSS
@@ -24,7 +23,6 @@ Phát triển hệ thống luyện tập lập trình trực tuyến tích hợp
 - Zod
 
 ## Module chính
-
 - Problem Management
 - Code Editor
 - Code Submission
@@ -34,7 +32,6 @@ Phát triển hệ thống luyện tập lập trình trực tuyến tích hợp
 - User Profile
 
 ## AI Agents
-
 - Error Analysis Agent
 - Hint Generation Agent
 - Code Review Agent
