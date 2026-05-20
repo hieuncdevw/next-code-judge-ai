@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useRef, useCallback } from 'react'
 import { Settings, HelpCircle } from 'lucide-react'
 import {
   Select,
@@ -11,25 +11,6 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
-const defaultCode = `/**
- * @param {number[]} nums
- * @param {number} target
- * @return {number[]}
- */
-var twoSum = function(nums, target) {
-    const map = new Map();
-    
-    for (let i = 0; i < nums.length; i++) {
-        const complement = target - nums[i];
-        if (map.has(complement)) {
-            return [map.get(complement), i];
-        }
-        map.set(nums[i], i);
-    }
-    
-    return [];
-};`
-
 const languages = [
   { value: 'javascript', label: 'JavaScript' },
   { value: 'python', label: 'Python' },
@@ -38,10 +19,23 @@ const languages = [
   { value: 'typescript', label: 'TypeScript' },
 ]
 
-export function EditorPanel({ onShowAI }: { onShowAI: () => void }) {
-  const [language, setLanguage] = useState('javascript')
-  const [code, setCode] = useState(defaultCode)
+interface EditorPanelProps {
+  /** Current source code — controlled by parent (CodeWorkspace) */
+  code: string
+  /** Currently selected language — controlled by parent (CodeWorkspace) */
+  language: string
+  onCodeChange: (code: string) => void
+  onLanguageChange: (language: string) => void
+  onShowAI: () => void
+}
 
+export function EditorPanel({
+  code,
+  language,
+  onCodeChange,
+  onLanguageChange,
+  onShowAI,
+}: EditorPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lineNumbersRef = useRef<HTMLDivElement>(null)
 
@@ -59,7 +53,7 @@ export function EditorPanel({ onShowAI }: { onShowAI: () => void }) {
 
       {/* ── Editor header ── */}
       <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-border bg-card">
-        <Select value={language} onValueChange={setLanguage}>
+        <Select value={language} onValueChange={onLanguageChange}>
           <SelectTrigger className="w-40 h-8 text-sm">
             <SelectValue />
           </SelectTrigger>
@@ -119,7 +113,7 @@ export function EditorPanel({ onShowAI }: { onShowAI: () => void }) {
         <textarea
           ref={textareaRef}
           value={code}
-          onChange={(e) => setCode(e.target.value)}
+          onChange={(e) => onCodeChange(e.target.value)}
           onScroll={syncScroll}
           className="
             flex-1 min-w-0

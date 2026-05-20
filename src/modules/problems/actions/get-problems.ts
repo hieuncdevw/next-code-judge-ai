@@ -17,22 +17,54 @@ export type ProblemRow = {
   createdAt: Date;
 };
 
-export async function getProblems(): Promise<ProblemRow[]> {
-  const problems = await prisma.problem.findMany({
-    where: { isPublished: true },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      difficulty: true,
-      tags: true,
-      createdAt: true,
-    },
-  });
+const MOCK_PROBLEM_ROWS: ProblemRow[] = [
+  {
+    id: 'two-sum-id',
+    title: 'Two Sum',
+    slug: 'two-sum',
+    difficulty: 'Easy',
+    tags: ['Array', 'Hash Table'],
+    createdAt: new Date('2026-05-20'),
+  },
+  {
+    id: 'valid-parentheses-id',
+    title: 'Valid Parentheses',
+    slug: 'valid-parentheses',
+    difficulty: 'Easy',
+    tags: ['String', 'Stack'],
+    createdAt: new Date('2026-05-20'),
+  },
+  {
+    id: 'palindrome-number-id',
+    title: 'Palindrome Number',
+    slug: 'palindrome-number',
+    difficulty: 'Easy',
+    tags: ['Math'],
+    createdAt: new Date('2026-05-20'),
+  },
+]
 
-  return problems.map((p) => ({
-    ...p,
-    difficulty: DIFFICULTY_LABEL[p.difficulty],
-  }));
+export async function getProblems(): Promise<ProblemRow[]> {
+  try {
+    const problems = await prisma.problem.findMany({
+      where: { isPublished: true },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        difficulty: true,
+        tags: true,
+        createdAt: true,
+      },
+    });
+
+    return problems.map((p) => ({
+      ...p,
+      difficulty: DIFFICULTY_LABEL[p.difficulty],
+    }));
+  } catch (err) {
+    console.warn('[getProblems] Database offline, returning mock problems:', err)
+    return MOCK_PROBLEM_ROWS
+  }
 }

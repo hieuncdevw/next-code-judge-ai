@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -11,6 +11,29 @@ import { EditorPanel } from './editor-panel'
 import { ConsolePanel } from './console-panel'
 import { AIChatPanel } from '@/modules/ai/components/ai-chat-panel'
 import type { WorkspaceProblem } from '@/modules/workspace/types/workspace-problem'
+import type { SubmissionResult } from '@/modules/workspace/actions/run-code'
+
+function getDefaultCode(slug: string, language: string): string {
+  if (slug === 'two-sum') {
+    if (language === 'python') {
+      return `def twoSum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in seen:\n            return [seen[complement], i]\n        seen[num] = i\n    return []`
+    }
+    return `/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nvar twoSum = function(nums, target) {\n    const map = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n        if (map.has(complement)) {\n            return [map.get(complement), i];\n        }\n        map.set(nums[i], i);\n    }\n    return [];\n};`
+  }
+  if (slug === 'valid-parentheses') {
+    if (language === 'python') {
+      return `def isValid(s: str) -> bool:\n    stack = []\n    mapping = {")": "(", "}": "{", "]": "["}\n    for char in s:\n        if char in mapping:\n            top_element = stack.pop() if stack else '#'\n            if mapping[char] != top_element:\n                return False\n        else:\n            stack.append(char)\n    return not stack`
+    }
+    return `/**\n * @param {string} s\n * @return {boolean}\n */\nvar isValid = function(s) {\n    const stack = [];\n    const map = {\n        ')': '(',\n        '}': '{',\n        ']': '['\n    };\n    for (let char of s) {\n        if (char in map) {\n            if (stack.pop() !== map[char]) return false;\n        } else {\n            stack.push(char);\n        }\n    }\n    return stack.length === 0;\n};`
+  }
+  if (slug === 'palindrome-number') {
+    if (language === 'python') {
+      return `def isPalindrome(x: int) -> bool:\n    if x < 0:\n        return False\n    return str(x) == str(x)[::-1]`
+    }
+    return `/**\n * @param {number} x\n * @return {boolean}\n */\nvar isPalindrome = function(x) {\n    if (x < 0) return false;\n    const str = x.toString();\n    return str === str.split('').reverse().join('');\n};`
+  }
+  return `// Write your code here`
+}
 
 function getDifficultyColor(difficulty: string) {
   switch (difficulty) {
@@ -27,10 +50,35 @@ function getDifficultyColor(difficulty: string) {
 
 interface CodeWorkspaceProps {
   problem: WorkspaceProblem | null
+  initialSubmissions?: SubmissionResult[]
 }
 
-export function CodeWorkspace({ problem }: CodeWorkspaceProps) {
+export function CodeWorkspace({ problem, initialSubmissions = [] }: CodeWorkspaceProps) {
   const [showAIChat, setShowAIChat] = useState(false)
+
+  // Shared editor state — lifted from EditorPanel so ConsolePanel can read it
+  const [code, setCode] = useState('')
+  const [language, setLanguage] = useState('javascript')
+
+  // Automatically load template when problem or language changes
+  useEffect(() => {
+    if (problem) {
+      setCode(getDefaultCode(problem.slug, language))
+    }
+  }, [problem?.slug, language])
+
+  // Submission history shown in the Submissions tab
+  const [submissions, setSubmissions] = useState<SubmissionResult[]>(initialSubmissions)
+
+  // Sync state with server-side fetched submissions on problem change
+  useEffect(() => {
+    setSubmissions(initialSubmissions)
+  }, [initialSubmissions])
+
+  const handleSubmissionResult = useCallback((result: SubmissionResult) => {
+    setSubmissions((prev) => [result, ...prev])
+  }, [])
+
 
   return (
     // h-full fills the flex-1 container from workspace/page.tsx
@@ -73,24 +121,30 @@ export function CodeWorkspace({ problem }: CodeWorkspaceProps) {
       <div className="flex-1 overflow-hidden min-h-0">
         <ResizablePanelGroup direction="horizontal" className="h-full">
 
-          {/* ── Left panel: Problem description (≈ 33 %) ── */}
+          {/* ── Left panel: Problem description (≈ 35 %) ── */}
           <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
             {/* overflow-hidden so ProblemPanel controls its own scroll */}
             <div className="h-full overflow-hidden">
-              <ProblemPanel problem={problem} />
+              <ProblemPanel problem={problem} submissions={submissions} />
             </div>
           </ResizablePanel>
 
           <ResizableHandle withHandle />
 
-          {/* ── Right panel: Editor + Console (≈ 67 %) ───── */}
+          {/* ── Right panel: Editor + Console (≈ 65 %) ───── */}
           <ResizablePanel defaultSize={65} minSize={40}>
             <ResizablePanelGroup direction="vertical" className="h-full">
 
               {/* Code editor */}
               <ResizablePanel defaultSize={65} minSize={35}>
                 <div className="h-full overflow-hidden">
-                  <EditorPanel onShowAI={() => setShowAIChat(true)} />
+                  <EditorPanel
+                    code={code}
+                    language={language}
+                    onCodeChange={setCode}
+                    onLanguageChange={setLanguage}
+                    onShowAI={() => setShowAIChat(true)}
+                  />
                 </div>
               </ResizablePanel>
 
@@ -99,7 +153,12 @@ export function CodeWorkspace({ problem }: CodeWorkspaceProps) {
               {/* Console / test cases */}
               <ResizablePanel defaultSize={35} minSize={20}>
                 <div className="h-full overflow-hidden">
-                  <ConsolePanel />
+                  <ConsolePanel
+                    code={code}
+                    language={language}
+                    problemId={problem?.id ?? ''}
+                    onSubmissionResult={handleSubmissionResult}
+                  />
                 </div>
               </ResizablePanel>
 
@@ -112,7 +171,12 @@ export function CodeWorkspace({ problem }: CodeWorkspaceProps) {
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
                 <div className="h-full overflow-hidden">
-                  <AIChatPanel onClose={() => setShowAIChat(false)} />
+                  <AIChatPanel
+                    onClose={() => setShowAIChat(false)}
+                    problem={problem}
+                    code={code}
+                    language={language}
+                  />
                 </div>
               </ResizablePanel>
             </>

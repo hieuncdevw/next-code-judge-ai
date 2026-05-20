@@ -7,7 +7,10 @@ interface DailyChallengeProps {
   difficulty?: 'Easy' | 'Medium' | 'Hard'
   acceptanceRate?: number
   description?: string
+  /** @deprecated use problemSlug instead */
   problemId?: string
+  /** URL slug of the problem, used to navigate to /workspace?problem={slug} */
+  problemSlug?: string
 }
 
 function getDifficultyColor(difficulty: string) {
@@ -29,6 +32,7 @@ export function DailyChallengeCard({
   acceptanceRate = 47.3,
   description = 'Given an array of integers nums and an integer target, return the indices of the two numbers that add up to target.',
   problemId = '1',
+  problemSlug = 'two-sum',
 }: DailyChallengeProps) {
   return (
     <Card className="bg-card border-border p-6 lg:col-span-2">
@@ -50,7 +54,7 @@ export function DailyChallengeCard({
         {description}
       </p>
 
-      <Link href={`/workspace?id=${problemId}`}>
+      <Link href={`/workspace?problem=${problemSlug}`}>
         <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
           Solve Challenge
         </Button>
