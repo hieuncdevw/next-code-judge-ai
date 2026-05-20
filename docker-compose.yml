@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: next-code-judge-ai-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: next_code_judge_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - next_code_judge_ai_data:/var/lib/postgresql/data
+
+volumes:
+  next_code_judge_ai_data:

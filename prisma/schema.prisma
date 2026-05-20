@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum SubmissionStatus {
+  PENDING
+  ACCEPTED
+  WRONG_ANSWER
+  COMPILE_ERROR
+  RUNTIME_ERROR
+  TIME_LIMIT_EXCEEDED
+  MEMORY_LIMIT_EXCEEDED
+  INTERNAL_ERROR
+}
+
+enum AIAgentType {
+  ERROR_ANALYSIS
+  HINT_GENERATION
+  CODE_REVIEW
+  GENERAL_ASSISTANT
+}
+
+enum AIMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model UserProfile {
+  id          String  @id @default(cuid())
+  clerkUserId String  @unique
+  email       String  @unique
+  name        String?
+  avatarUrl   String?
+  role        Role    @default(USER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  submissions     Submission[]
+  problemProgress ProblemProgress[]
+  aiChatSessions  AIChatSession[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Problem {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  description String
+  difficulty  Difficulty
+
+  tags        String[]
+  examples    Json
+  constraints String?
+
+  timeLimitMs   Int @default(1000)
+  memoryLimitKb Int @default(262144)
+
+  isPublished Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  testCases       TestCase[]
+  submissions     Submission[]
+  problemProgress ProblemProgress[]
+  aiChatSessions  AIChatSession[]
+
+  @@index([difficulty])
+  @@index([isPublished])
+  @@index([createdAt])
+}
+
+model TestCase {
+  id             String  @id @default(cuid())
+  problemId      String
+  input          String
+  expectedOutput String
+  isSample       Boolean @default(false)
+  orderIndex     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  problem Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  results TestCaseResult[]
+
+  @@index([problemId])
+  @@index([isSample])
+}
+
+model Submission {
+  id        String @id @default(cuid())
+  userId    String
+  problemId String
+
+  sourceCode       String
+  language         String
+  judge0LanguageId Int
+
+  status       SubmissionStatus @default(PENDING)
+  runtimeMs    Int?
+  memoryKb     Int?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    UserProfile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  results TestCaseResult[]
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TestCaseResult {
+  id           String  @id @default(cuid())
+  submissionId String
+  testCaseId   String?
+
+  input          String
+  expectedOutput String
+  actualOutput   String?
+
+  status       SubmissionStatus
+  runtimeMs    Int?
+  memoryKb     Int?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  testCase   TestCase?  @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+
+  @@index([submissionId])
+  @@index([testCaseId])
+  @@index([status])
+}
+
+model ProblemProgress {
+  id        String @id @default(cuid())
+  userId    String
+  problemId String
+
+  isSolved      Boolean   @default(false)
+  solvedAt      DateTime?
+  bestRuntimeMs Int?
+  bestMemoryKb  Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem     @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@index([problemId])
+  @@index([isSolved])
+}
+
+model AIChatSession {
+  id        String  @id @default(cuid())
+  userId    String
+  problemId String?
+
+  title     String?
+  agentType AIAgentType @default(GENERAL_ASSISTANT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     UserProfile     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem  Problem?        @relation(fields: [problemId], references: [id], onDelete: SetNull)
+  messages AIChatMessage[]
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([agentType])
+  @@index([createdAt])
+}
+
+model AIChatMessage {
+  id        String @id @default(cuid())
+  sessionId String
+
+  role     AIMessageRole
+  content  String
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  session AIChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([role])
+  @@index([createdAt])
+}
