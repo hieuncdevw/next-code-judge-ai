@@ -49,7 +49,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
         }
       }
     }
-  } catch (err) {
+  } catch {
     // Clerk not configured, no env keys, or offline
     console.log('[getCurrentUser] Clerk auth not active. Falling back to default developer user.')
   }
@@ -75,7 +75,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
       name: dbUser.name,
       avatarUrl: dbUser.avatarUrl,
     }
-  } catch (dbErr) {
+  } catch {
     console.log('[getCurrentUser] Database offline. Returning in-memory fallback profile.')
     return {
       id: 'mock-user-db-id',

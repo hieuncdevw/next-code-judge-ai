@@ -74,7 +74,7 @@ export function ProblemsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedProblems.map((problem, index) => (
+          {paginatedProblems.map((problem) => (
             <TableRow
               key={problem.id}
               className="border-b border-border hover:bg-muted/50 transition-colors"

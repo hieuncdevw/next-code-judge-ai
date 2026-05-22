@@ -27,7 +27,7 @@ export type ProblemDetail = {
   }[]
 }
 
-const MOCK_PROBLEMS: Record<string, any> = {
+const MOCK_PROBLEMS: Record<string, ProblemDetail> = {
   'two-sum': {
     id: 'two-sum-id',
     title: 'Two Sum',

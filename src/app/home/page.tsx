@@ -16,8 +16,20 @@ export const metadata = {
   description: 'Your learning dashboard for coding problems',
 }
 
+function formatRelativeTime(createdAt: Date): string {
+  const diffMs = Date.now() - createdAt.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+  if (diffMins > 0) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+  return 'Just now'
+}
+
 export default async function HomePage() {
-  let submissions: any[] | undefined = undefined;
+  let submissions: { id: string; problemTitle: string; problemSlug: string; status: 'accepted' | 'wrong_answer'; executionTime: number; timestamp: string }[] | undefined = undefined;
 
   try {
     const user = await getCurrentUser()
@@ -29,30 +41,14 @@ export default async function HomePage() {
     })
 
     if (dbSubmissions.length > 0) {
-      submissions = dbSubmissions.map((sub) => {
-        const diffMs = Date.now() - sub.createdAt.getTime()
-        const diffMins = Math.floor(diffMs / 60000)
-        const diffHours = Math.floor(diffMins / 60)
-        const diffDays = Math.floor(diffHours / 24)
-
-        let timestamp = 'Just now'
-        if (diffDays > 0) {
-          timestamp = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-        } else if (diffHours > 0) {
-          timestamp = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-        } else if (diffMins > 0) {
-          timestamp = `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
-        }
-
-        return {
-          id: sub.id,
-          problemTitle: sub.problem.title,
-          problemSlug: sub.problem.slug,
-          status: sub.status === 'ACCEPTED' ? 'accepted' : 'wrong_answer',
-          executionTime: sub.runtimeMs ?? 0,
-          timestamp,
-        }
-      })
+      submissions = dbSubmissions.map((sub) => ({
+        id: sub.id,
+        problemTitle: sub.problem.title,
+        problemSlug: sub.problem.slug,
+        status: sub.status === 'ACCEPTED' ? 'accepted' : 'wrong_answer' as const,
+        executionTime: sub.runtimeMs ?? 0,
+        timestamp: formatRelativeTime(sub.createdAt),
+      }))
     }
   } catch (err) {
     console.error('[HomePage] failed to fetch recent submissions:', err)

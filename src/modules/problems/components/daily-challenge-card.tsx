@@ -31,7 +31,6 @@ export function DailyChallengeCard({
   difficulty = 'Easy',
   acceptanceRate = 47.3,
   description = 'Given an array of integers nums and an integer target, return the indices of the two numbers that add up to target.',
-  problemId = '1',
   problemSlug = 'two-sum',
 }: DailyChallengeProps) {
   return (

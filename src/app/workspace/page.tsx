@@ -3,6 +3,7 @@ import { CodeWorkspace } from '@/modules/workspace/components/code-workspace'
 import { getProblemBySlug } from '@/modules/problems/actions/get-problem-by-slug'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import type { SubmissionStatus } from '@/modules/workspace/actions/run-code'
 
 export const metadata = {
   title: 'Code Workspace - Next Code Judge',
@@ -23,7 +24,7 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
     : null
 
   // Fetch past submissions from database for this problem and user
-  let initialSubmissions: any[] = []
+  let initialSubmissions: { status: SubmissionStatus; statusLabel: string; runtime?: number; memory?: number; errorMessage?: string; passedTests: number; totalTests: number; submittedAt: string }[] = []
   if (problem) {
     try {
       const user = await getCurrentUser()
@@ -52,7 +53,7 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
           .join(' ')
 
         return {
-          status: sub.status,
+          status: sub.status as SubmissionStatus,
           statusLabel: label,
           runtime: sub.runtimeMs ?? undefined,
           memory: sub.memoryKb ?? undefined,
