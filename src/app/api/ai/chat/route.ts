@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server'
 import { streamText } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
-function getMockReply(messages: Message[], problem: any, code: string, language: string): string {
+function getMockReply(messages: Message[], problem: { title?: string } | null): string {
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
   const q = lastUser?.content.toLowerCase() ?? ''
 
@@ -44,12 +44,17 @@ export async function POST(request: NextRequest) {
     const code = body.code ?? ''
     const language = body.language ?? 'javascript'
 
-    const hasGemini = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATION_API_KEY)
+    const geminiApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY
+    const hasGemini = !!geminiApiKey
     const hasOpenAI = !!process.env.OPENAI_API_KEY
 
     if (hasGemini || hasOpenAI) {
+      const geminiModel = process.env.GEMINI_MODEL ?? 'gemini-3.5-flash'
+      const googleProvider = createGoogleGenerativeAI({
+        apiKey: geminiApiKey,
+      })
       const model = hasGemini
-        ? google('gemini-1.5-flash')
+        ? googleProvider(geminiModel)
         : openai('gpt-4o-mini')
 
       const problemText = problem
@@ -69,11 +74,12 @@ ${code}
 \`\`\`
 
 Instructions:
-1. Be concise, helpful, and encourage the developer to learn.
-2. If they ask for a hint, guide them step-by-step rather than giving the complete solution immediately.
+1. Keep explanations concise, technical, and avoid excessive praise.
+2. If they ask for a hint, focus on the current problem and current code first. Guide them step-by-step rather than giving the complete solution immediately.
 3. If they ask for complexity, explain the time and space complexity of their current solution and recommend the optimal complexity.
-4. If they ask to debug or explain an error, analyze their code, explain where the bug is, and point out logic/compile/runtime issues.
-5. Use clean Markdown formatting. Keep replies under 300 words.
+4. Do NOT use LaTeX math syntax such as $O(N)$, \\(O(N)\\), \\mathbf{}, or \\times. For complexity notation, always use inline code formatting: \`O(n)\`, \`O(n log n)\`, \`O(1)\`, \`O(n^2)\`.
+5. If they ask to debug or explain an error, analyze their code, explain where the bug is, and point out logic/compile/runtime issues.
+6. Use clean Markdown formatting. Keep replies under 300 words.
 `.trim()
 
       const formattedMessages = messages.map((m) => ({
@@ -90,7 +96,7 @@ Instructions:
       return result.toTextStreamResponse()
     }
 
-    const reply = getMockReply(messages, problem, code, language)
+    const reply = getMockReply(messages, problem)
     const tokens = reply.match(/\S+|\s+/g) ?? [reply]
     const encoder = new TextEncoder()
 
@@ -113,8 +119,9 @@ Instructions:
         'Cache-Control': 'no-cache',
       },
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[POST /api/ai/chat] error:', err)
-    return new Response(`Error generating response: ${err.message}`, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    return new Response(`Error generating response: ${message}`, { status: 500 })
   }
 }

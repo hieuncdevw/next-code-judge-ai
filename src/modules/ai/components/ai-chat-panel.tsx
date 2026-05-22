@@ -101,7 +101,7 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
     } finally {
       setIsStreaming(false)
     }
-  }, [input, isStreaming, messages])
+  }, [input, isStreaming, messages, code, language, problem])
 
   return (
     /* min-h-0 is required so flex children don't overflow the ResizablePanel */
