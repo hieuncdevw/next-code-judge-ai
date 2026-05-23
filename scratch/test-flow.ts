@@ -30,8 +30,8 @@ var twoSum = function(nums, target) {
     if (res1.errorMessage) {
       console.log(`- Error Message: ${res1.errorMessage.slice(0, 200)}...`)
     }
-  } catch (err: any) {
-    console.error('Test 1 failed with error:', err.message)
+  } catch (err: unknown) {
+    console.error('Test 1 failed with error:', err instanceof Error ? err.message : String(err))
   }
 
   // Test Case 2: Accepted JS code for Two Sum
@@ -61,8 +61,8 @@ var twoSum = function(nums, target) {
     console.log(`- Passed Tests: ${res2.passedTests} / ${res2.totalTests}`)
     console.log(`- Runtime: ${res2.runtime}ms`)
     console.log(`- Memory: ${res2.memory}KB`)
-  } catch (err: any) {
-    console.error('Test 2 failed with error:', err.message)
+  } catch (err: unknown) {
+    console.error('Test 2 failed with error:', err instanceof Error ? err.message : String(err))
   }
 
   // Test Case 3: Accepted Python code for Palindrome Number
@@ -83,8 +83,8 @@ def isPalindrome(x: int) -> bool:
     console.log('Result 3:')
     console.log(`- Status: ${res3.status} (${res3.statusLabel})`)
     console.log(`- Passed Tests: ${res3.passedTests} / ${res3.totalTests}`)
-  } catch (err: any) {
-    console.error('Test 3 failed with error:', err.message)
+  } catch (err: unknown) {
+    console.error('Test 3 failed with error:', err instanceof Error ? err.message : String(err))
   }
 
   console.log('\n=== INTEGRATION TEST COMPLETED ===')

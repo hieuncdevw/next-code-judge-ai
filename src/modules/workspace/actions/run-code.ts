@@ -8,6 +8,7 @@ export type SubmissionStatus =
   | 'COMPILE_ERROR'
   | 'RUNTIME_ERROR'
   | 'TIME_LIMIT_EXCEEDED'
+  | 'UNAUTHORIZED'
 
 export type SubmissionResult = {
   status: SubmissionStatus
@@ -24,12 +25,15 @@ export type SubmissionResult = {
 }
 
 const languageIds: Record<string, number> = {
-  javascript: 93,
-  python: 92,
-  java: 91,
-  cpp: 76,
-  typescript: 94,
+  javascript: 63,
+  python: 71,
+  java: 62,
+  cpp: 54,
+  typescript: 74,
 }
+
+const RAPIDAPI_SUBMIT_DELAY_MS = 1200
+const RAPIDAPI_POLL_DELAY_MS = 1000
 
 /**
  * Returns wrapped code with driver wrapper script to execute LeetCode style functions via stdin/stdout.
@@ -138,6 +142,9 @@ async function submitToJudge0(
   })
 
   if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error('Rate Limited')
+    }
     throw new Error(`Judge0 submit failed: HTTP ${res.status}`)
   }
 
@@ -151,12 +158,21 @@ async function pollSubmission(
   token: string
 ) {
   const maxAttempts = 15
+  const isRapidAPI = apiUrl.includes('rapidapi.com')
+  const pollDelay = isRapidAPI ? RAPIDAPI_POLL_DELAY_MS : 500
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (isRapidAPI) {
+      await new Promise((resolve) => setTimeout(resolve, pollDelay))
+    }
     const res = await fetch(`${apiUrl}/submissions/${token}?base64_encoded=true`, {
       headers,
     })
 
     if (!res.ok) {
+      if (res.status === 429) {
+        throw new Error('Rate Limited')
+      }
       throw new Error(`Judge0 poll failed: HTTP ${res.status}`)
     }
 
@@ -184,7 +200,9 @@ async function pollSubmission(
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    if (!isRapidAPI) {
+      await new Promise((resolve) => setTimeout(resolve, pollDelay))
+    }
   }
 
   throw new Error('Judge0 submission timed out after 15 attempts')
@@ -193,7 +211,23 @@ async function pollSubmission(
 import { getCurrentUser } from '@/lib/auth'
 import { SubmissionStatus as PrismaStatus } from '@/generated/prisma/client'
 
-const MOCK_PROBLEMS: Record<string, any> = {
+interface MockTestCase {
+  id: string
+  input: string
+  expectedOutput: string
+  isSample: boolean
+  orderIndex: number
+}
+
+interface MockProblem {
+  id: string
+  title: string
+  slug: string
+  difficulty: string
+  testCases: MockTestCase[]
+}
+
+const MOCK_PROBLEMS: Record<string, MockProblem> = {
   'two-sum': {
     id: 'two-sum-id',
     title: 'Two Sum',
@@ -240,6 +274,17 @@ export async function runCode(payload: {
   // 1. Fetch user details from DB resiliently
   const user = await getCurrentUser()
 
+  if (!user) {
+    return {
+      status: 'UNAUTHORIZED',
+      statusLabel: 'Login Required',
+      passedTests: 0,
+      totalTests: 0,
+      submittedAt,
+      errorMessage: 'Bạn cần đăng nhập để nộp bài và lưu kết quả.',
+    }
+  }
+
   let problem = null
   try {
     if (problemId && problemId.length > 20) { // UUID check
@@ -276,9 +321,9 @@ interface LocalTestCase {
   orderIndex: number
 }
 
-  const testCases: LocalTestCase[] = ((problem?.testCases as any[]) ?? []).filter((tc) => tc.isSample)
+  const testCases: LocalTestCase[] = ((problem?.testCases as LocalTestCase[]) ?? []).filter((tc) => tc.isSample)
   if (testCases.length === 0 && problem?.testCases) {
-    testCases.push(...(problem.testCases as any[]))
+    testCases.push(...(problem.testCases as LocalTestCase[]))
   }
 
   if (!problem || testCases.length === 0) {
@@ -293,7 +338,7 @@ interface LocalTestCase {
   }
 
   const wrappedCode = getWrappedCode(problem.slug, language, code)
-  const languageId = languageIds[language] || 93
+  const languageId = languageIds[language] || 63
 
   const apiUrl = process.env.JUDGE0_API_URL || 'http://localhost:2358'
   const headers: Record<string, string> = {
@@ -308,19 +353,34 @@ interface LocalTestCase {
   }
 
   try {
-    const submissionPromises = testCases.map(async (tc) => {
-      const token = await submitToJudge0(apiUrl, headers, wrappedCode, languageId, tc.input, tc.expectedOutput)
-      return { token, testCase: tc }
-    })
+    let results: Array<Awaited<ReturnType<typeof pollSubmission>> & { testCase: LocalTestCase }> = []
+    const isRapidAPI = apiUrl.includes('rapidapi.com')
 
-    const submissions = await Promise.all(submissionPromises)
+    if (isRapidAPI) {
+      for (let i = 0; i < testCases.length; i++) {
+        const tc = testCases[i]
+        if (i > 0) {
+          await new Promise((resolve) => setTimeout(resolve, RAPIDAPI_SUBMIT_DELAY_MS))
+        }
+        const token = await submitToJudge0(apiUrl, headers, wrappedCode, languageId, tc.input, tc.expectedOutput)
+        const result = await pollSubmission(apiUrl, headers, token)
+        results.push({ ...result, testCase: tc })
+      }
+    } else {
+      const submissionPromises = testCases.map(async (tc) => {
+        const token = await submitToJudge0(apiUrl, headers, wrappedCode, languageId, tc.input, tc.expectedOutput)
+        return { token, testCase: tc }
+      })
 
-    const pollPromises = submissions.map(async (sub) => {
-      const result = await pollSubmission(apiUrl, headers, sub.token)
-      return { ...result, testCase: sub.testCase }
-    })
+      const submissions = await Promise.all(submissionPromises)
 
-    const results = await Promise.all(pollPromises)
+      const pollPromises = submissions.map(async (sub) => {
+        const result = await pollSubmission(apiUrl, headers, sub.token)
+        return { ...result, testCase: sub.testCase }
+      })
+
+      results = await Promise.all(pollPromises)
+    }
 
     let passedTests = 0
     let maxRuntime = 0
@@ -459,15 +519,26 @@ interface LocalTestCase {
       totalTests: testCases.length,
       submittedAt: finalSubmittedAt,
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[runCode] Judge0 execution failed:', err)
+    const message = err instanceof Error ? err.message : String(err)
+    if (message === 'Rate Limited') {
+      return {
+        status: 'RUNTIME_ERROR',
+        statusLabel: 'Rate Limited',
+        passedTests: 0,
+        totalTests: testCases.length,
+        submittedAt,
+        errorMessage: 'RapidAPI rate limit hit. Wait a few minutes or upgrade plan.',
+      }
+    }
     return {
       status: 'COMPILE_ERROR',
       statusLabel: 'Connection Failed',
       passedTests: 0,
       totalTests: testCases.length,
       submittedAt,
-      errorMessage: `Could not connect to Judge0 API at ${apiUrl}.\nDetails: ${err.message}\n\nPlease ensure your Judge0 instance is running or configure JUDGE0_API_URL in your environment.`,
+      errorMessage: `Could not connect to Judge0 API at ${apiUrl}.\nDetails: ${message}\n\nPlease ensure your Judge0 instance is running or configure JUDGE0_API_URL in your environment.`,
     }
   }
 }

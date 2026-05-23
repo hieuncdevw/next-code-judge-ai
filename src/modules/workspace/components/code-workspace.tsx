@@ -51,27 +51,34 @@ function getDifficultyColor(difficulty: string) {
 interface CodeWorkspaceProps {
   problem: WorkspaceProblem | null
   initialSubmissions?: SubmissionResult[]
+  isAuthenticated?: boolean
 }
 
-export function CodeWorkspace({ problem, initialSubmissions = [] }: CodeWorkspaceProps) {
+export function CodeWorkspace({ problem, initialSubmissions = [], isAuthenticated = false }: CodeWorkspaceProps) {
   const [showAIChat, setShowAIChat] = useState(false)
 
   // Shared editor state — lifted from EditorPanel so ConsolePanel can read it
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
 
-  // Automatically load template when problem or language changes
+  // Automatically load template when problem or language changes.
+  // templateKey captures both dimensions so the effect only runs when either changes.
+  const templateKey = problem ? `${problem.slug}::${language}` : null
+
   useEffect(() => {
-    if (problem) {
+    if (problem && templateKey !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCode(getDefaultCode(problem.slug, language))
     }
-  }, [problem?.slug, language])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateKey])
 
   // Submission history shown in the Submissions tab
   const [submissions, setSubmissions] = useState<SubmissionResult[]>(initialSubmissions)
 
   // Sync state with server-side fetched submissions on problem change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSubmissions(initialSubmissions)
   }, [initialSubmissions])
 
@@ -125,7 +132,11 @@ export function CodeWorkspace({ problem, initialSubmissions = [] }: CodeWorkspac
           <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
             {/* overflow-hidden so ProblemPanel controls its own scroll */}
             <div className="h-full overflow-hidden">
-              <ProblemPanel problem={problem} submissions={submissions} />
+              <ProblemPanel
+                problem={problem}
+                submissions={submissions}
+                isAuthenticated={isAuthenticated}
+              />
             </div>
           </ResizablePanel>
 

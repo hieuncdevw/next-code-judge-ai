@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, X, Clock, Cpu } from 'lucide-react'
+import Link from 'next/link'
+import { Check, X, Clock, Cpu, Lock } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { WorkspaceProblem } from '@/modules/workspace/types/workspace-problem'
 import type { SubmissionResult } from '@/modules/workspace/actions/run-code'
@@ -28,10 +29,17 @@ function SubmissionStatusBadge({ status, label }: { status: SubmissionResult['st
     COMPILE_ERROR: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
     RUNTIME_ERROR: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
     TIME_LIMIT_EXCEEDED: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
+    UNAUTHORIZED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200',
   }
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${colorMap[status]}`}>
-      {status === 'ACCEPTED' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+      {status === 'ACCEPTED' ? (
+        <Check className="h-3 w-3" />
+      ) : status === 'UNAUTHORIZED' ? (
+        <Lock className="h-3 w-3" />
+      ) : (
+        <X className="h-3 w-3" />
+      )}
       {label}
     </span>
   )
@@ -42,10 +50,11 @@ interface ProblemPanelProps {
   problem: WorkspaceProblem | null
   /** Submission history accumulated by CodeWorkspace */
   submissions: SubmissionResult[]
+  isAuthenticated?: boolean
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-export function ProblemPanel({ problem, submissions }: ProblemPanelProps) {
+export function ProblemPanel({ problem, submissions, isAuthenticated = false }: ProblemPanelProps) {
   const [activeTab, setActiveTab] = useState('description')
 
   return (
@@ -177,12 +186,12 @@ export function ProblemPanel({ problem, submissions }: ProblemPanelProps) {
               <p className="text-sm text-muted-foreground">No problem selected.</p>
               <p className="text-xs text-muted-foreground">
                 Open a problem from the{' '}
-                <a
+                <Link
                   href="/problems"
                   className="underline underline-offset-4 hover:text-foreground transition-colors"
                 >
                   Problems
-                </a>{' '}
+                </Link>{' '}
                 list to start coding.
               </p>
             </div>
@@ -194,7 +203,11 @@ export function ProblemPanel({ problem, submissions }: ProblemPanelProps) {
           value="submissions"
           className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 data-[state=inactive]:hidden"
         >
-          {submissions.length === 0 ? (
+          {!isAuthenticated ? (
+            <div className="text-center py-12 text-muted-foreground select-none">
+              <p className="text-sm font-medium text-foreground">Đăng nhập để xem lịch sử nộp bài.</p>
+            </div>
+          ) : submissions.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground select-none">
               <p className="text-sm">No submissions yet.</p>
               <p className="text-xs mt-1">Run your code to see results here.</p>
