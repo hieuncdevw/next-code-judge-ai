@@ -17,7 +17,7 @@ Phát triển hệ thống luyện tập lập trình trực tuyến tích hợp
 - Prisma
 - PostgreSQL
 - Judge0
-- Gemini 2.5 Flash
+- Gemini 3.5 Flash
 - Zustand
 - Monaco Editor
 - Zod
