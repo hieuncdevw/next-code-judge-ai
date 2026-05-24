@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Play, Check, X, Loader2, Clock, Cpu } from 'lucide-react'
+import { Play, Check, X, Loader2, Clock, Cpu, Lock } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { runCode, type SubmissionResult } from '@/modules/workspace/actions/run-code'
+import { SignInButton } from '@clerk/nextjs'
 
 // ── Static mock test cases shown in the Test Cases tab ──────────────────────
 const MOCK_TEST_CASES = [
@@ -69,6 +70,13 @@ function getStatusConfig(status: SubmissionResult['status']): StatusConfig {
         textClass: 'text-purple-800 dark:text-purple-200',
         borderClass: 'border-purple-200 dark:border-purple-800',
         icon: <Clock className="h-4 w-4" />,
+      }
+    case 'UNAUTHORIZED':
+      return {
+        bgClass: 'bg-yellow-50 dark:bg-yellow-950/30',
+        textClass: 'text-yellow-800 dark:text-yellow-200',
+        borderClass: 'border-yellow-200 dark:border-yellow-800',
+        icon: <Lock className="h-4 w-4" />,
       }
   }
 }
@@ -187,9 +195,11 @@ export function ConsolePanel({
                   <p className={`text-sm font-semibold ${cfg.textClass}`}>
                     {lastResult.statusLabel}
                   </p>
-                  <span className={`ml-auto text-xs ${cfg.textClass} opacity-70`}>
-                    {lastResult.passedTests}/{lastResult.totalTests} tests
-                  </span>
+                  {lastResult.status !== 'UNAUTHORIZED' && (
+                    <span className={`ml-auto text-xs ${cfg.textClass} opacity-70`}>
+                      {lastResult.passedTests}/{lastResult.totalTests} tests
+                    </span>
+                  )}
                 </div>
 
                 {/* Runtime / memory stats */}
@@ -210,27 +220,45 @@ export function ConsolePanel({
 
                 {/* Error message (compile / runtime) */}
                 {lastResult.errorMessage && (
-                  <pre className="rounded-lg bg-muted border border-border/50 p-3 font-mono text-xs text-foreground whitespace-pre-wrap overflow-x-auto">
-                    {lastResult.errorMessage}
-                  </pre>
+                  lastResult.status === 'UNAUTHORIZED' ? (
+                    <div className="rounded-lg border border-yellow-200/60 bg-yellow-50/40 p-4 dark:border-yellow-800/40 dark:bg-yellow-950/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed font-medium">
+                        {lastResult.errorMessage}
+                      </p>
+                      <SignInButton mode="modal">
+                        <Button
+                          size="sm"
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg shrink-0 self-start md:self-auto"
+                        >
+                          Đăng nhập
+                        </Button>
+                      </SignInButton>
+                    </div>
+                  ) : (
+                    <pre className="rounded-lg bg-muted border border-border/50 p-3 font-mono text-xs text-foreground whitespace-pre-wrap overflow-x-auto">
+                      {lastResult.errorMessage}
+                    </pre>
+                  )
                 )}
 
                 {/* Per-test breakdown */}
-                <div className="rounded-lg bg-muted p-3 font-mono text-xs space-y-1.5 border border-border/50">
-                  {MOCK_TEST_CASES.map((tc, idx) => {
-                    const passed = idx < lastResult.passedTests
-                    return (
-                      <div
-                        key={tc.id}
-                        className={passed
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'}
-                      >
-                        {passed ? '✓' : '✗'} Test Case {tc.id}: {passed ? 'Passed' : 'Failed'}
-                      </div>
-                    )
-                  })}
-                </div>
+                {lastResult.status !== 'UNAUTHORIZED' && (
+                  <div className="rounded-lg bg-muted p-3 font-mono text-xs space-y-1.5 border border-border/50">
+                    {MOCK_TEST_CASES.map((tc, idx) => {
+                      const passed = idx < lastResult.passedTests
+                      return (
+                        <div
+                          key={tc.id}
+                          className={passed
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'}
+                        >
+                          {passed ? '✓' : '✗'} Test Case {tc.id}: {passed ? 'Passed' : 'Failed'}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })()}

@@ -25,44 +25,48 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
 
   // Fetch past submissions from database for this problem and user
   let initialSubmissions: { status: SubmissionStatus; statusLabel: string; runtime?: number; memory?: number; errorMessage?: string; passedTests: number; totalTests: number; submittedAt: string }[] = []
+  let isAuthenticated = false
   if (problem) {
     try {
       const user = await getCurrentUser()
-      const dbSubmissions = await prisma.submission.findMany({
-        where: {
-          userId: user.id,
-          problemId: problem.id,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        include: {
-          results: true,
-        },
-        take: 50, // limit to last 50 submissions
-      })
+      if (user) {
+        isAuthenticated = true
+        const dbSubmissions = await prisma.submission.findMany({
+          where: {
+            userId: user.id,
+            problemId: problem.id,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          include: {
+            results: true,
+          },
+          take: 50, // limit to last 50 submissions
+        })
 
-      initialSubmissions = dbSubmissions.map((sub) => {
-        const passed = sub.results.filter((r) => r.status === 'ACCEPTED').length
-        const total = sub.results.length
+        initialSubmissions = dbSubmissions.map((sub) => {
+          const passed = sub.results.filter((r) => r.status === 'ACCEPTED').length
+          const total = sub.results.length
 
-        const label = sub.status
-          .toLowerCase()
-          .split('_')
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(' ')
+          const label = sub.status
+            .toLowerCase()
+            .split('_')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ')
 
-        return {
-          status: sub.status as SubmissionStatus,
-          statusLabel: label,
-          runtime: sub.runtimeMs ?? undefined,
-          memory: sub.memoryKb ?? undefined,
-          errorMessage: sub.errorMessage ?? undefined,
-          passedTests: passed,
-          totalTests: total > 0 ? total : 2, // fallback
-          submittedAt: sub.createdAt.toISOString(),
-        }
-      })
+          return {
+            status: sub.status as SubmissionStatus,
+            statusLabel: label,
+            runtime: sub.runtimeMs ?? undefined,
+            memory: sub.memoryKb ?? undefined,
+            errorMessage: sub.errorMessage ?? undefined,
+            passedTests: passed,
+            totalTests: total > 0 ? total : 2, // fallback
+            submittedAt: sub.createdAt.toISOString(),
+          }
+        })
+      }
     } catch (err) {
       console.error('[WorkspacePage] failed to fetch initial submissions:', err)
     }
@@ -72,7 +76,11 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
     <div className="flex flex-col h-screen">
       <NavHeader />
       <div className="flex-1 min-h-0 overflow-hidden">
-        <CodeWorkspace problem={problem} initialSubmissions={initialSubmissions} />
+        <CodeWorkspace
+          problem={problem}
+          initialSubmissions={initialSubmissions}
+          isAuthenticated={isAuthenticated}
+        />
       </div>
     </div>
   )

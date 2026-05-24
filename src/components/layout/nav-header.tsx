@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { SignInButton, SignUpButton, UserButton, Show } from '@clerk/nextjs'
 
 const navLinks = [
   { href: '/home', label: 'Home' },
@@ -68,9 +69,21 @@ export function NavHeader() {
               )}
               <span className="sr-only">Toggle theme</span>
             </Button>
-            <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-xs font-bold text-primary">U</span>
-            </div>
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <Button variant="outline" size="sm" className="rounded-lg font-medium">
+                  Đăng nhập
+                </Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button size="sm" className="rounded-lg font-medium">
+                  Đăng ký
+                </Button>
+              </SignUpButton>
+            </Show>
+            <Show when="signed-in">
+              <UserButton />
+            </Show>
           </div>
         </div>
       </div>

@@ -30,25 +30,33 @@ function formatRelativeTime(createdAt: Date): string {
 
 export default async function HomePage() {
   let submissions: { id: string; problemTitle: string; problemSlug: string; status: 'accepted' | 'wrong_answer'; executionTime: number; timestamp: string }[] | undefined = undefined;
+  let username = 'User'
+  let isAuthenticated = false
 
   try {
     const user = await getCurrentUser()
-    const dbSubmissions = await prisma.submission.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      include: { problem: true },
-      take: 5,
-    })
+    if (user) {
+      isAuthenticated = true
+      username = user.name || 'User'
+      const dbSubmissions = await prisma.submission.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        include: { problem: true },
+        take: 5,
+      })
 
-    if (dbSubmissions.length > 0) {
-      submissions = dbSubmissions.map((sub) => ({
-        id: sub.id,
-        problemTitle: sub.problem.title,
-        problemSlug: sub.problem.slug,
-        status: sub.status === 'ACCEPTED' ? 'accepted' : 'wrong_answer' as const,
-        executionTime: sub.runtimeMs ?? 0,
-        timestamp: formatRelativeTime(sub.createdAt),
-      }))
+      if (dbSubmissions.length > 0) {
+        submissions = dbSubmissions.map((sub) => ({
+          id: sub.id,
+          problemTitle: sub.problem.title,
+          problemSlug: sub.problem.slug,
+          status: sub.status === 'ACCEPTED' ? 'accepted' : 'wrong_answer' as const,
+          executionTime: sub.runtimeMs ?? 0,
+          timestamp: formatRelativeTime(sub.createdAt),
+        }))
+      }
+    } else {
+      username = 'Guest'
     }
   } catch (err) {
     console.error('[HomePage] failed to fetch recent submissions:', err)
@@ -60,7 +68,7 @@ export default async function HomePage() {
       
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Welcome Banner */}
-        <WelcomeBanner username="Developer" streak={5} />
+        <WelcomeBanner username={username} streak={isAuthenticated ? 5 : 0} />
 
         {/* Main Grid Layout */}
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -76,7 +84,7 @@ export default async function HomePage() {
             />
 
             {/* Recent Submissions */}
-            <RecentActivityFeed submissions={submissions} />
+            <RecentActivityFeed submissions={submissions} isAuthenticated={isAuthenticated} />
           </div>
 
           {/* Right Section (33% width) */}

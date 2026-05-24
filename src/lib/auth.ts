@@ -14,7 +14,11 @@ export type AuthUser = {
  * If Clerk is not configured or in development mode, automatically upserts
  * and falls back to a default developer profile in the database.
  */
-export async function getCurrentUser(): Promise<AuthUser> {
+export async function getCurrentUser(): Promise<AuthUser | null> {
+  const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  const clerkSecretKey = process.env.CLERK_SECRET_KEY
+  const isClerkConfigured = !!(clerkPublishableKey && clerkSecretKey)
+
   try {
     const session = await auth()
     const clerkUserId = session.userId
@@ -49,40 +53,58 @@ export async function getCurrentUser(): Promise<AuthUser> {
         }
       }
     }
-  } catch {
+
+    // If Clerk is configured but no user is signed in, return null (do not fall back to developer profile)
+    if (isClerkConfigured) {
+      console.log('[getCurrentUser] Clerk keys configured but no user is signed in. Returning null.')
+      return null
+    }
+  } catch (e) {
     // Clerk not configured, no env keys, or offline
-    console.log('[getCurrentUser] Clerk auth not active. Falling back to default developer user.')
+    console.log('[getCurrentUser] Clerk auth not active or failed:', e)
+    if (isClerkConfigured) {
+      return null
+    }
   }
 
-  // Fallback developer user profile
-  const defaultEmail = 'developer@nextcodejudge.ai'
-  try {
-    const dbUser = await prisma.userProfile.upsert({
-      where: { email: defaultEmail },
-      update: {},
-      create: {
+  // Developer fallback profile may only be used when:
+  // NODE_ENV === "development" and ALLOW_DEV_AUTH_FALLBACK === "true"
+  const isDev = process.env.NODE_ENV === 'development'
+  const allowDevFallback = process.env.ALLOW_DEV_AUTH_FALLBACK === 'true'
+
+  if (isDev && allowDevFallback) {
+    // Fallback developer user profile
+    const defaultEmail = 'developer@nextcodejudge.ai'
+    try {
+      const dbUser = await prisma.userProfile.upsert({
+        where: { email: defaultEmail },
+        update: {},
+        create: {
+          clerkUserId: 'mock-clerk-user-12345',
+          email: defaultEmail,
+          name: 'Developer Profile',
+          avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80',
+        },
+      })
+
+      return {
+        id: dbUser.id,
+        clerkUserId: dbUser.clerkUserId,
+        email: dbUser.email,
+        name: dbUser.name,
+        avatarUrl: dbUser.avatarUrl,
+      }
+    } catch {
+      console.log('[getCurrentUser] Database offline. Returning in-memory fallback profile.')
+      return {
+        id: 'mock-user-db-id',
         clerkUserId: 'mock-clerk-user-12345',
         email: defaultEmail,
-        name: 'Developer Profile',
+        name: 'Developer Profile (Offline)',
         avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80',
-      },
-    })
-
-    return {
-      id: dbUser.id,
-      clerkUserId: dbUser.clerkUserId,
-      email: dbUser.email,
-      name: dbUser.name,
-      avatarUrl: dbUser.avatarUrl,
-    }
-  } catch {
-    console.log('[getCurrentUser] Database offline. Returning in-memory fallback profile.')
-    return {
-      id: 'mock-user-db-id',
-      clerkUserId: 'mock-clerk-user-12345',
-      email: defaultEmail,
-      name: 'Developer Profile (Offline)',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80',
+      }
     }
   }
+
+  return null
 }
