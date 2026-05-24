@@ -19,7 +19,19 @@ interface FilterBarProps {
 }
 
 const difficulties = ['Easy', 'Medium', 'Hard']
-const topics = ['Array', 'String', 'Hash Table', 'Tree', 'Graph', 'Dynamic Programming']
+const topics = [
+  'Array',
+  'String',
+  'Hash Table',
+  'Tree',
+  'Dynamic Programming',
+  'Math',
+  'Linked List',
+  'Binary Search',
+  'Two Pointers',
+  'Recursion',
+  'Divide and Conquer'
+]
 
 export function FilterBar({
   searchQuery,

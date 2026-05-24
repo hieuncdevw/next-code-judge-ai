@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Check, X, Clock, Cpu, Lock } from 'lucide-react'
+import { Check, X, Clock, Cpu, Lock, Info } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { WorkspaceProblem } from '@/modules/workspace/types/workspace-problem'
 import type { SubmissionResult } from '@/modules/workspace/actions/run-code'
@@ -30,6 +30,7 @@ function SubmissionStatusBadge({ status, label }: { status: SubmissionResult['st
     RUNTIME_ERROR: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
     TIME_LIMIT_EXCEEDED: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
     UNAUTHORIZED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200',
+    DISPLAY_ONLY: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200',
   }
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${colorMap[status]}`}>
@@ -37,6 +38,8 @@ function SubmissionStatusBadge({ status, label }: { status: SubmissionResult['st
         <Check className="h-3 w-3" />
       ) : status === 'UNAUTHORIZED' ? (
         <Lock className="h-3 w-3" />
+      ) : status === 'DISPLAY_ONLY' ? (
+        <Info className="h-3 w-3" />
       ) : (
         <X className="h-3 w-3" />
       )}

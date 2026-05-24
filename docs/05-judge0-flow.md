@@ -92,3 +92,20 @@ Mã trạng thái trả về từ Judge0 được hệ thống ánh xạ sang c�
 * **Khuyến nghị cấu hình**:
   - **Môi trường Phát triển / Demo**: Khuyến khích sử dụng dịch vụ **RapidAPI Judge0 CE** để tích hợp nhanh chóng và ổn định.
   - **Môi trường Sản xuất (Production)**: Bắt buộc tự lưu trữ Judge0 trên máy chủ Linux thực tế (VPS/VM Ubuntu/Debian) được cấu hình cgroup v1.
+
+---
+
+## 7. Quy trình xử lý với bài tập chỉ hiển thị (DISPLAY_ONLY Flow)
+
+Với việc mở rộng tập dữ liệu, hiện tại có **15 bài tập** sẵn sàng cho việc hiển thị danh sách, chi tiết đề bài và giao diện Workspace. Tuy nhiên, hệ thống áp dụng cơ chế phân loại khả năng thực thi và chấm bài như sau:
+
+- **Bài tập có thể chạy code (Executable Problems - 3 bài)**: Gồm 3 bài tập cốt lõi là `two-sum`, `valid-parentheses`, và `palindrome-number`. Những bài này đã được tích hợp trình bao bọc driver riêng trong `run-code.ts` để đọc dữ liệu qua `stdin`, gọi hàm lời giải và in kết quả ra `stdout` để Judge0 chấm điểm.
+- **Bài tập chỉ xem (Display-only Problems - 12 bài)**: Gồm 12 bài tập mới được thêm vào. Đối với 12 bài tập này:
+  1. Hệ thống thực hiện kiểm tra trạng thái đăng nhập trước tiên.
+  2. Nếu đã đăng nhập thành công, Server Action sẽ kiểm tra slug của bài tập. Vì các bài tập này chưa được hỗ trợ chạy code, hệ thống sẽ trả về ngay trạng thái đặc biệt `DISPLAY_ONLY` cùng thông báo: *"Bài này hiện chỉ hỗ trợ xem đề. Chạy code chỉ khả dụng cho Two Sum, Valid Parentheses và Palindrome Number."*
+  3. Server Action **không thực hiện gọi đến Judge0 API** và **không ghi dữ liệu nộp bài (Submission/TestCaseResult)** vào cơ sở dữ liệu để tối ưu tài nguyên.
+  4. Giao diện Workspace UI (`ConsolePanel`) nhận trạng thái này và hiển thị dưới dạng một thông báo chỉ dẫn (Info banner) thân thiện thay vì hiển thị dưới dạng lỗi biên dịch hoặc lỗi runtime.
+  
+> [!NOTE]
+> Việc xây dựng driver wrapper và bổ sung testcase hoàn chỉnh trên Judge0 cho 12 bài tập này là một tác vụ trong tương lai (Future Task) khi cần nâng cấp tính năng chạy code cho toàn bộ dataset.
+

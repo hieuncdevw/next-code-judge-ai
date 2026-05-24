@@ -1,30 +1,12 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Play, Check, X, Loader2, Clock, Cpu, Lock } from 'lucide-react'
+import { Play, Check, X, Loader2, Clock, Cpu, Lock, Info } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { runCode, type SubmissionResult } from '@/modules/workspace/actions/run-code'
 import { SignInButton } from '@clerk/nextjs'
-
-// ── Static mock test cases shown in the Test Cases tab ──────────────────────
-const MOCK_TEST_CASES = [
-  {
-    id: 1,
-    input: 'nums = [2,7,11,15]\ntarget = 9',
-    expectedOutput: '[0,1]',
-  },
-  {
-    id: 2,
-    input: 'nums = [3,2,4]\ntarget = 6',
-    expectedOutput: '[1,2]',
-  },
-  {
-    id: 3,
-    input: 'nums = [3,3]\ntarget = 6',
-    expectedOutput: '[0,1]',
-  },
-]
+import type { WorkspaceProblem } from '@/modules/workspace/types/workspace-problem'
 
 // ── Status helpers ───────────────────────────────────────────────────────────
 type StatusConfig = {
@@ -78,9 +60,15 @@ function getStatusConfig(status: SubmissionResult['status']): StatusConfig {
         borderClass: 'border-yellow-200 dark:border-yellow-800',
         icon: <Lock className="h-4 w-4" />,
       }
+    case 'DISPLAY_ONLY':
+      return {
+        bgClass: 'bg-blue-50 dark:bg-blue-950/30',
+        textClass: 'text-blue-800 dark:text-blue-200',
+        borderClass: 'border-blue-200 dark:border-blue-800',
+        icon: <Info className="h-4 w-4" />,
+      }
   }
 }
-
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface ConsolePanelProps {
@@ -88,8 +76,8 @@ interface ConsolePanelProps {
   code: string
   /** Currently selected language — passed from CodeWorkspace */
   language: string
-  /** DB id of the loaded problem (empty string when no problem loaded) */
-  problemId: string
+  /** Currently loaded problem */
+  problem: WorkspaceProblem | null
   /** Called after each submission so CodeWorkspace can accumulate results */
   onSubmissionResult: (result: SubmissionResult) => void
 }
@@ -98,13 +86,17 @@ interface ConsolePanelProps {
 export function ConsolePanel({
   code,
   language,
-  problemId,
+  problem,
   onSubmissionResult,
 }: ConsolePanelProps) {
   const [activeTab, setActiveTab] = useState('testcases')
   const [lastResult, setLastResult] = useState<SubmissionResult | null>(null)
   // useTransition gives us isPending for free without managing a boolean
   const [isPending, startTransition] = useTransition()
+
+  const problemId = problem?.id ?? ''
+  const testCases: WorkspaceProblem['testCases'] =
+    problem?.testCases?.filter((tc) => tc.isSample) || []
 
   const handleRunCode = () => {
     setActiveTab('result')
@@ -145,13 +137,13 @@ export function ConsolePanel({
           value="testcases"
           className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 data-[state=inactive]:hidden"
         >
-          {MOCK_TEST_CASES.map((tc) => (
+          {testCases.map((tc, idx) => (
             <div
-              key={tc.id}
+              key={tc.id || idx}
               className="rounded-lg border border-border bg-muted p-3 space-y-2"
             >
               <span className="text-xs font-semibold text-muted-foreground font-mono">
-                Test Case {tc.id}
+                Test Case {idx + 1}
               </span>
               <div className="rounded bg-background border border-border/50 p-2 font-mono text-xs text-foreground space-y-1">
                 <div>
@@ -165,6 +157,11 @@ export function ConsolePanel({
               </div>
             </div>
           ))}
+          {testCases.length === 0 && (
+            <div className="text-center py-6 text-muted-foreground">
+              <p className="text-sm">No test cases available.</p>
+            </div>
+          )}
         </TabsContent>
 
         {/* ── Result tab ── */}
@@ -195,7 +192,7 @@ export function ConsolePanel({
                   <p className={`text-sm font-semibold ${cfg.textClass}`}>
                     {lastResult.statusLabel}
                   </p>
-                  {lastResult.status !== 'UNAUTHORIZED' && (
+                  {lastResult.status !== 'UNAUTHORIZED' && lastResult.status !== 'DISPLAY_ONLY' && (
                     <span className={`ml-auto text-xs ${cfg.textClass} opacity-70`}>
                       {lastResult.passedTests}/{lastResult.totalTests} tests
                     </span>
@@ -234,6 +231,13 @@ export function ConsolePanel({
                         </Button>
                       </SignInButton>
                     </div>
+                  ) : lastResult.status === 'DISPLAY_ONLY' ? (
+                    <div className="rounded-lg border border-blue-200/60 bg-blue-50/40 p-4 dark:border-blue-800/40 dark:bg-blue-950/10 flex items-start gap-3">
+                      <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                      <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed font-medium">
+                        {lastResult.errorMessage}
+                      </p>
+                    </div>
                   ) : (
                     <pre className="rounded-lg bg-muted border border-border/50 p-3 font-mono text-xs text-foreground whitespace-pre-wrap overflow-x-auto">
                       {lastResult.errorMessage}
@@ -242,18 +246,18 @@ export function ConsolePanel({
                 )}
 
                 {/* Per-test breakdown */}
-                {lastResult.status !== 'UNAUTHORIZED' && (
+                {lastResult.status !== 'UNAUTHORIZED' && lastResult.status !== 'DISPLAY_ONLY' && (
                   <div className="rounded-lg bg-muted p-3 font-mono text-xs space-y-1.5 border border-border/50">
-                    {MOCK_TEST_CASES.map((tc, idx) => {
+                    {testCases.map((tc, idx) => {
                       const passed = idx < lastResult.passedTests
                       return (
                         <div
-                          key={tc.id}
+                          key={tc.id || idx}
                           className={passed
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : 'text-rose-600 dark:text-rose-400'}
                         >
-                          {passed ? '✓' : '✗'} Test Case {tc.id}: {passed ? 'Passed' : 'Failed'}
+                          {passed ? '✓' : '✗'} Test Case {idx + 1}: {passed ? 'Passed' : 'Failed'}
                         </div>
                       )
                     })}

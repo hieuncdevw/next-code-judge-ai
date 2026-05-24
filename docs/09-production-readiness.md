@@ -38,11 +38,14 @@ Tất cả các thành phần cốt lõi và tích hợp bên thứ ba đã đư
 
 ### 3.2. Hệ thống Chấm bài (Judge0 Sandbox)
 * **Kết nối qua RapidAPI**: Xác minh cuộc gọi thực tế qua cổng RapidAPI diễn ra trơn tru đối với gói Judge0 CE.
+* **Mở rộng tập dữ liệu (Dataset Expansion)**: Tập dữ liệu bài tập đã được mở rộng lên **15 bài tập** (6 Dễ, 6 Trung bình, 3 Khó).
+  - **3 bài tập cốt lõi (Executable)**: \`two-sum\`, \`valid-parentheses\`, \`palindrome-number\` đã được tích hợp driver chấm bài đầy đủ trên Judge0.
+  - **12 bài tập mở rộng (Display-only)**: Hiển thị đầy đủ thông tin chi tiết (đề bài, ví dụ, ràng buộc, template code, ca kiểm thử mẫu) trên giao diện Workspace. Khi chạy code, hệ thống sẽ trả về trạng thái chỉ hiển thị \`DISPLAY_ONLY\` kèm thông báo hướng dẫn thân thiện, không gọi API Judge0 hay ghi cơ sở dữ liệu.
 * **Xử lý các trạng thái chấm bài**:
   - **Accepted (AC)**: Trả về kết quả chính xác khi mã nguồn vượt qua mọi testcase.
   - **Wrong Answer (WA)**: Hiển thị đúng sự sai lệch giữa kết quả thực tế (Actual Output) và kết quả kỳ vọng (Expected Output).
   - **Syntax Error / Runtime Error**: Nhận diện tốt lỗi cú pháp (SyntaxError) trong Node.js và hiển thị chi tiết thông báo lỗi từ stderr.
-* **Cơ chế chống nghẽn (Rate Limit Guard)**: Xác minh cơ chế thực thi tuần tự (sequential execution) kết hợp với khoảng trễ (`RAPIDAPI_SUBMIT_DELAY_MS` và `RAPIDAPI_POLL_DELAY_MS`) hoạt động hoàn hảo, không còn xảy ra lỗi 429 trên môi trường RapidAPI Free/Basic.
+* **Cơ chế chống nghẽn (Rate Limit Guard)**: Xác minh cơ chế thực thi tuần tự (sequential execution) kết hợp với khoảng trễ (\`RAPIDAPI_SUBMIT_DELAY_MS\` và \`RAPIDAPI_POLL_DELAY_MS\`) hoạt động hoàn hảo, không còn xảy ra lỗi 429 trên môi trường RapidAPI Free/Basic.
 * *Chi tiết xem tại:* [Quy trình chấm bài qua Judge0 (docs/05-judge0-flow.md)](file:///d:/next-code-judge-ai/docs/05-judge0-flow.md)
 
 ### 3.3. Xác thực & Cơ sở dữ liệu (Auth & DB Sync)
@@ -62,6 +65,11 @@ Tất cả các thành phần cốt lõi và tích hợp bên thứ ba đã đư
 | **Chặn nộp bài khách (Guest submit blocking)** | Khách hàng chưa đăng nhập bị chặn không cho gửi code tới Judge0 và không lưu bất cứ bản ghi nào vào DB. | **PASS** | `runCode` trả về sớm trạng thái `UNAUTHORIZED` khi phát hiện phiên làm việc của khách, hoàn toàn không gọi dịch vụ ngoài. |
 | **An toàn Fallback (Developer fallback safety)** | Chỉ cho phép sử dụng Developer Profile khi thỏa mãn đồng thời hai biến môi trường cục bộ (`NODE_ENV=development` và `ALLOW_DEV_AUTH_FALLBACK=true`). Nếu có cấu hình Clerk keys nhưng chưa đăng nhập, trả về `null` thay vì fallback. | **PASS** | Đã được kiểm chứng nghiêm ngặt thông qua kịch bản kiểm thử tự động `verify-auth-rules.ts`. |
 | **Đồng bộ CSDL thực tế (Real Clerk user persistence)** | Lưu thông tin người dùng Clerk thật, lịch sử nộp bài thật và tiến độ học tập thật vào cơ sở dữ liệu PostgreSQL. | **PENDING** | Chờ cấu hình đầy đủ biến môi trường Clerk thực tế trên môi trường chạy thử nghiệm hoặc sản xuất để tiến hành xác thực. |
+| **Mở rộng tập dữ liệu (Dataset Expansion)** | Tập dữ liệu bài tập được mở rộng lên 15 bài để kiểm thử tìm kiếm, lọc và phân trang. | **PASS** | Đã cập nhật tệp seed.ts và cấu trúc dữ liệu fallback đồng bộ cho cả 15 bài tập. |
+| **Xác minh dữ liệu tĩnh ngoại tuyến (Offline fallback)** | Danh sách bài tập vẫn hoạt động bình thường qua dữ liệu mock tĩnh khi database ngoại tuyến. | **PASS** | Đã kiểm chứng việc tìm kiếm, lọc theo tag, độ khó và phân trang chạy mượt mà ngay cả khi database bị ngắt kết nối. |
+| **Khởi tạo dữ liệu thật (Real DB seed execution)** | Chạy tệp seed để đẩy toàn bộ dữ liệu 15 bài tập vào cơ sở dữ liệu thật bằng lệnh `npx prisma db seed`. | **PENDING** | Đang chờ PostgreSQL được kích hoạt hoạt động để thực hiện lệnh seed. Hiện tại tệp seed.ts đã cài đặt cơ chế upsert để tránh trùng lặp. |
+| **Phạm vi chấm bài Judge0 (Judge0 execution)** | Hỗ trợ chấm điểm tự động thông qua Judge0 đối với các bài tập. | **PASS (3 core)** | Chỉ xác minh chạy code thành công cho 3 bài tập cốt lõi (Two Sum, Valid Parentheses, Palindrome Number) nhờ driver wrapper trong Server Action. |
+| **Chế độ chỉ hiển thị (Display-only protection)** | 12 bài tập mở rộng được chặn chạy thử code an toàn để tránh lỗi thiếu driver wrapper. | **PASS (12 new)** | 12 bài tập mới tự động trả về lỗi `DISPLAY_ONLY` kèm hướng dẫn tiếng Việt, không gọi Judge0 API và không ghi cơ sở dữ liệu. |
 
 * *Chi tiết lịch sử sửa các lỗi này xem tại:* [Nhật ký Sửa lỗi (docs/08-debug-notes.md)](file:///d:/next-code-judge-ai/docs/08-debug-notes.md)
 

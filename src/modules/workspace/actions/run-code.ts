@@ -9,6 +9,7 @@ export type SubmissionStatus =
   | 'RUNTIME_ERROR'
   | 'TIME_LIMIT_EXCEEDED'
   | 'UNAUTHORIZED'
+  | 'DISPLAY_ONLY'
 
 export type SubmissionResult = {
   status: SubmissionStatus
@@ -260,6 +261,126 @@ const MOCK_PROBLEMS: Record<string, MockProblem> = {
       { id: 'pn-tc-2', input: "-121", expectedOutput: "false", isSample: true, orderIndex: 1 },
       { id: 'pn-tc-3', input: "10", expectedOutput: "false", isSample: true, orderIndex: 2 },
     ]
+  },
+  'merge-two-sorted-lists': {
+    id: 'merge-two-sorted-lists-id',
+    title: 'Merge Two Sorted Lists',
+    slug: 'merge-two-sorted-lists',
+    difficulty: 'Easy',
+    testCases: [
+      { id: 'mts-tc-1', input: "[1,2,4]\n[1,3,4]", expectedOutput: "[1,1,2,3,4,4]", isSample: true, orderIndex: 0 },
+      { id: 'mts-tc-2', input: "[]\n[]", expectedOutput: "[]", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'best-time-to-buy-and-sell-stock': {
+    id: 'best-time-to-buy-and-sell-stock-id',
+    title: 'Best Time to Buy and Sell Stock',
+    slug: 'best-time-to-buy-and-sell-stock',
+    difficulty: 'Easy',
+    testCases: [
+      { id: 'bt-tc-1', input: "[7,1,5,3,6,4]", expectedOutput: "5", isSample: true, orderIndex: 0 },
+      { id: 'bt-tc-2', input: "[7,6,4,3,1]", expectedOutput: "0", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'binary-search': {
+    id: 'binary-search-id',
+    title: 'Binary Search',
+    slug: 'binary-search',
+    difficulty: 'Easy',
+    testCases: [
+      { id: 'bs-tc-1', input: "[-1,0,3,5,9,12]\n9", expectedOutput: "4", isSample: true, orderIndex: 0 },
+      { id: 'bs-tc-2', input: "[-1,0,3,5,9,12]\n2", expectedOutput: "-1", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'maximum-subarray': {
+    id: 'maximum-subarray-id',
+    title: 'Maximum Subarray',
+    slug: 'maximum-subarray',
+    difficulty: 'Medium',
+    testCases: [
+      { id: 'ms-tc-1', input: "[-2,1,-3,4,-1,2,1,-5,4]", expectedOutput: "6", isSample: true, orderIndex: 0 },
+      { id: 'ms-tc-2', input: "[1]", expectedOutput: "1", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'product-of-array-except-self': {
+    id: 'product-of-array-except-self-id',
+    title: 'Product of Array Except Self',
+    slug: 'product-of-array-except-self',
+    difficulty: 'Medium',
+    testCases: [
+      { id: 'pa-tc-1', input: "[1,2,3,4]", expectedOutput: "[24,12,8,6]", isSample: true, orderIndex: 0 },
+      { id: 'pa-tc-2', input: "[-1,1,0,-3,3]", expectedOutput: "[0,0,9,0,0]", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'longest-substring-without-repeating-characters': {
+    id: 'longest-substring-without-repeating-characters-id',
+    title: 'Longest Substring Without Repeating Characters',
+    slug: 'longest-substring-without-repeating-characters',
+    difficulty: 'Medium',
+    testCases: [
+      { id: 'lswrc-tc-1', input: "abcabcbb", expectedOutput: "3", isSample: true, orderIndex: 0 },
+      { id: 'lswrc-tc-2', input: "bbbbb", expectedOutput: "1", isSample: true, orderIndex: 1 },
+    ]
+  },
+  '3sum': {
+    id: '3sum-id',
+    title: '3Sum',
+    slug: '3sum',
+    difficulty: 'Medium',
+    testCases: [
+      { id: '3s-tc-1', input: "[-1,0,1,2,-1,-4]", expectedOutput: "[[-1,-1,2],[-1,0,1]]", isSample: true, orderIndex: 0 },
+      { id: '3s-tc-2', input: "[0,1,1]", expectedOutput: "[]", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'coin-change': {
+    id: 'coin-change-id',
+    title: 'Coin Change',
+    slug: 'coin-change',
+    difficulty: 'Medium',
+    testCases: [
+      { id: 'cc-tc-1', input: "[1,2,5]\n11", expectedOutput: "3", isSample: true, orderIndex: 0 },
+      { id: 'cc-tc-2', input: "[2]\n3", expectedOutput: "-1", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'binary-tree-level-order-traversal': {
+    id: 'binary-tree-level-order-traversal-id',
+    title: 'Binary Tree Level Order Traversal',
+    slug: 'binary-tree-level-order-traversal',
+    difficulty: 'Medium',
+    testCases: [
+      { id: 'btlot-tc-1', input: "[3,9,20,null,null,15,7]", expectedOutput: "[[3],[9,20],[15,7]]", isSample: true, orderIndex: 0 },
+      { id: 'btlot-tc-2', input: "[1]", expectedOutput: "[[1]]", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'median-of-two-sorted-arrays': {
+    id: 'median-of-two-sorted-arrays-id',
+    title: 'Median of Two Sorted Arrays',
+    slug: 'median-of-two-sorted-arrays',
+    difficulty: 'Hard',
+    testCases: [
+      { id: 'motsa-tc-1', input: "[1,3]\n[2]", expectedOutput: "2.0", isSample: true, orderIndex: 0 },
+      { id: 'motsa-tc-2', input: "[1,2]\n[3,4]", expectedOutput: "2.5", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'merge-k-sorted-lists': {
+    id: 'merge-k-sorted-lists-id',
+    title: 'Merge k Sorted Lists',
+    slug: 'merge-k-sorted-lists',
+    difficulty: 'Hard',
+    testCases: [
+      { id: 'mksl-tc-1', input: "[[1,4,5],[1,3,4],[2,6]]", expectedOutput: "[1,1,2,3,4,4,5,6]", isSample: true, orderIndex: 0 },
+      { id: 'mksl-tc-2', input: "[]", expectedOutput: "[]", isSample: true, orderIndex: 1 },
+    ]
+  },
+  'edit-distance': {
+    id: 'edit-distance-id',
+    title: 'Edit Distance',
+    slug: 'edit-distance',
+    difficulty: 'Hard',
+    testCases: [
+      { id: 'ed-tc-1', input: "horse\nros", expectedOutput: "3", isSample: true, orderIndex: 0 },
+      { id: 'ed-tc-2', input: "intention\nexecution", expectedOutput: "5", isSample: true, orderIndex: 1 },
+    ]
   }
 }
 
@@ -313,7 +434,24 @@ export async function runCode(payload: {
     }
   }
 
-interface LocalTestCase {
+  const SUPPORTED_SLUGS = ['two-sum', 'valid-parentheses', 'palindrome-number']
+  const isExecutable = problem && SUPPORTED_SLUGS.includes(problem.slug)
+
+  if (!isExecutable || !problem) {
+    const testCasesCount = problem
+      ? (problem.testCases?.length || 2)
+      : 2
+    return {
+      status: 'DISPLAY_ONLY',
+      statusLabel: 'Display Only',
+      passedTests: 0,
+      totalTests: testCasesCount,
+      submittedAt,
+      errorMessage: 'Bài này hiện chỉ hỗ trợ xem đề. Chạy code chỉ khả dụng cho Two Sum, Valid Parentheses và Palindrome Number.',
+    }
+  }
+
+  interface LocalTestCase {
   id: string
   input: string
   expectedOutput: string
