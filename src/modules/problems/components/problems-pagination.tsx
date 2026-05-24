@@ -48,6 +48,7 @@ export function Pagination({
   return (
     <div className="flex items-center justify-center gap-2">
       <Button
+        type="button"
         variant="outline"
         size="icon"
         onClick={() => onPageChange(currentPage - 1)}
@@ -66,6 +67,7 @@ export function Pagination({
             </div>
           ) : (
             <Button
+              type="button"
               key={page}
               variant={page === currentPage ? 'default' : 'outline'}
               size="sm"
@@ -79,6 +81,7 @@ export function Pagination({
       </div>
 
       <Button
+        type="button"
         variant="outline"
         size="icon"
         onClick={() => onPageChange(currentPage + 1)}

@@ -11,7 +11,7 @@ import { SignInButton, SignUpButton, UserButton, Show } from '@clerk/nextjs'
 const navLinks = [
   { href: '/home', label: 'Home' },
   { href: '/problems', label: 'Problems' },
-  { href: '/discuss', label: 'Discuss' },
+  // { href: '/discuss', label: 'Discuss' },
   { href: '/workspace', label: 'Workspace' },
 ]
 

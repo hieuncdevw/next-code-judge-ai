@@ -4,15 +4,12 @@ import { ThemeProvider } from "@/components/layout/theme-provider";
 import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 
+import type { Viewport } from 'next'
+
 export const metadata: Metadata = {
   title: 'Problem Dashboard',
   description: 'Browse and solve coding problems',
   generator: 'v0.app',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
   icons: {
     icon: [
       {
@@ -30,6 +27,12 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({
