@@ -14,7 +14,12 @@
 /coverage
 
 # next.js
-/.next/
+.next
+.next/
+.next_old
+.next_old/
+node_modules
+.env
 /out/
 
 # production
