@@ -1,6 +1,7 @@
 import { NavHeader } from '@/components/layout/nav-header'
 import { ProblemsPageClient } from '@/modules/problems/components/problems-page-client'
 import { getProblems } from '@/modules/problems/actions/get-problems'
+import { getUserProgress } from '@/modules/problems/actions/get-user-progress'
 
 export const metadata = {
   title: 'Problems - Next Code Judge',
@@ -10,7 +11,10 @@ export const metadata = {
 import { Suspense } from 'react'
 
 export default async function ProblemsPage() {
-  const problems = await getProblems()
+  const [problems, userProgress] = await Promise.all([
+    getProblems(),
+    getUserProgress(),
+  ])
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,7 +26,7 @@ export default async function ProblemsPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         }>
-          <ProblemsPageClient problems={problems} />
+          <ProblemsPageClient problems={problems} userProgress={userProgress} />
         </Suspense>
       </main>
     </div>

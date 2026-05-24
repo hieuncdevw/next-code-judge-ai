@@ -2,6 +2,11 @@
 
 import { Card } from '@/components/ui/card'
 import { TrendingUp } from 'lucide-react'
+import type { UserProgress } from '@/modules/problems/actions/get-user-progress'
+
+interface ProgressCardProps {
+  userProgress: UserProgress
+}
 
 interface StatItem {
   label: string
@@ -9,16 +14,38 @@ interface StatItem {
   color: string
 }
 
-export function ProgressCard() {
-  const solved = 42
-  const total = 150
-  const percentage = Math.round((solved / total) * 100)
+export function ProgressCard({ userProgress }: ProgressCardProps) {
+  const solved = userProgress.solvedCount
+  const total = userProgress.totalCount
+  const percentage = total > 0 ? Math.round((solved / total) * 100) : 0
 
   const stats: StatItem[] = [
-    { label: 'Easy', value: 28, color: 'bg-easy' },
-    { label: 'Medium', value: 12, color: 'bg-medium' },
-    { label: 'Hard', value: 2, color: 'bg-hard' },
+    { label: 'Easy', value: userProgress.solvedByDifficulty.Easy, color: 'bg-easy' },
+    { label: 'Medium', value: userProgress.solvedByDifficulty.Medium, color: 'bg-medium' },
+    { label: 'Hard', value: userProgress.solvedByDifficulty.Hard, color: 'bg-hard' },
   ]
+
+  // Calculate dynamic motivation text
+  let motivationTitle = 'Bắt đầu học ngay!'
+  let motivationText = 'Đăng nhập để lưu tiến độ giải bài.'
+
+  if (userProgress.isAuthenticated) {
+    if (solved >= total) {
+      motivationTitle = 'Hoàn thành xuất sắc!'
+      motivationText = 'Bạn đã giải toàn bộ các bài tập!'
+    } else {
+      const targetHalf = Math.ceil(total / 2)
+      if (solved >= targetHalf) {
+        const remaining = total - solved
+        motivationTitle = 'Đang tiến triển rất tốt!'
+        motivationText = `Giải thêm ${remaining} bài nữa để đạt 100%.`
+      } else {
+        const remaining = targetHalf - solved
+        motivationTitle = 'Khởi đầu tuyệt vời!'
+        motivationText = `Giải thêm ${remaining} bài nữa để đạt 50%.`
+      }
+    }
+  }
 
   return (
     <Card className="border border-border bg-card p-6">
@@ -67,29 +94,35 @@ export function ProgressCard() {
           </div>
         </div>
 
-        {/* Stats breakdown */}
-        <div className="space-y-3">
-          {stats.map((stat) => (
-            <div key={stat.label} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-full ${stat.color}`} />
-                <span className="text-sm text-muted-foreground">{stat.label}</span>
+        {/* Stats breakdown or Unauthenticated message */}
+        {!userProgress.isAuthenticated ? (
+          <div className="text-center py-4 text-sm text-muted-foreground">
+            Đăng nhập để theo dõi tiến độ học tập.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {stats.map((stat) => (
+              <div key={stat.label} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full ${stat.color}`} />
+                  <span className="text-sm text-muted-foreground">{stat.label}</span>
+                </div>
+                <span className="text-sm font-semibold text-foreground">
+                  {stat.value}
+                </span>
               </div>
-              <span className="text-sm font-semibold text-foreground">
-                {stat.value}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Motivation */}
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
           <div className="flex items-start gap-2">
             <TrendingUp className="h-4 w-4 text-primary mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-foreground">Great Progress!</p>
+              <p className="text-xs font-semibold text-foreground">{motivationTitle}</p>
               <p className="text-xs text-muted-foreground">
-                Solve 8 more problems to reach 50%
+                {motivationText}
               </p>
             </div>
           </div>

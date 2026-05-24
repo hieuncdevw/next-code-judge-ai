@@ -10,20 +10,22 @@ import { Pagination } from '@/modules/problems/components/problems-pagination'
 import { ProgressCard } from '@/modules/problems/components/progress-card'
 import { RecommendedProblems } from '@/modules/problems/components/recommended-problems'
 import type { ProblemRow } from '@/modules/problems/actions/get-problems'
+import type { UserProgress } from '@/modules/problems/actions/get-user-progress'
 
 interface ProblemsPageClientProps {
   problems: ProblemRow[]
+  userProgress: UserProgress
 }
 
 const ITEMS_PER_PAGE = 10
 
-export function ProblemsPageClient({ problems }: ProblemsPageClientProps) {
+export function ProblemsPageClient({ problems, userProgress }: ProblemsPageClientProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
 
-  // Read state from URL query parameters
+  // Derive state directly from URL search params (Single Source of Truth)
   const searchQuery = searchParams.get('search') || ''
   const selectedDifficulty = searchParams.get('difficulty') || ''
   const selectedTopic = searchParams.get('topic') || ''
@@ -32,7 +34,7 @@ export function ProblemsPageClient({ problems }: ProblemsPageClientProps) {
   // Local state for the search input to prevent keystroke lag
   const [localSearch, setLocalSearch] = useState(searchQuery)
 
-  // Keep local search input in sync if URL resets (e.g. on filter updates elsewhere)
+  // Keep local search input in sync if URL changes (e.g. browser back/forward or resets)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalSearch(searchQuery)
@@ -75,10 +77,16 @@ export function ProblemsPageClient({ problems }: ProblemsPageClientProps) {
     }
 
     if (updates.page !== undefined) {
-      params.set('page', String(updates.page))
+      if (updates.page > 1) {
+        params.set('page', String(updates.page))
+      } else {
+        params.delete('page')
+      }
     }
 
-    const newUrl = `${pathname}?${params.toString()}`
+    const newParamsStr = params.toString()
+    const newUrl = newParamsStr ? `${pathname}?${newParamsStr}` : pathname
+
     startTransition(() => {
       router.replace(newUrl, { scroll: false })
     })
@@ -93,7 +101,15 @@ export function ProblemsPageClient({ problems }: ProblemsPageClientProps) {
     }, 300)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localSearch])
+  }, [localSearch, searchQuery])
+
+  const handleDifficultyChange = (val: string) => {
+    updateFilters({ difficulty: val })
+  }
+
+  const handleTopicChange = (val: string) => {
+    updateFilters({ topic: val })
+  }
 
   // Compute totalPages based on filtered count so Pagination is always accurate
   const filteredCount = useMemo(() => {
@@ -118,10 +134,15 @@ export function ProblemsPageClient({ problems }: ProblemsPageClientProps) {
           searchQuery={localSearch}
           onSearchChange={setLocalSearch}
           selectedDifficulty={selectedDifficulty}
-          onDifficultyChange={(val) => updateFilters({ difficulty: val })}
+          onDifficultyChange={handleDifficultyChange}
           selectedTopic={selectedTopic}
-          onTopicChange={(val) => updateFilters({ topic: val })}
+          onTopicChange={handleTopicChange}
         />
+
+        {/* Visible Result Count */}
+        <div className="text-sm text-muted-foreground font-medium px-1">
+          Tìm thấy {filteredCount} bài tập
+        </div>
 
         {/* Lightweight loading indicator wrapper */}
         <div className="relative">
@@ -153,7 +174,7 @@ export function ProblemsPageClient({ problems }: ProblemsPageClientProps) {
 
       <aside className="lg:w-1/4">
         <div className="sticky top-8 space-y-6">
-          <ProgressCard />
+          <ProgressCard userProgress={userProgress} />
           <RecommendedProblems />
         </div>
       </aside>
