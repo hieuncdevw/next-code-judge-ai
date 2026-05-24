@@ -29,7 +29,6 @@ export function ProblemsPageClient({ problems, userProgress }: ProblemsPageClien
   const searchQuery = searchParams.get('search') || ''
   const selectedDifficulty = searchParams.get('difficulty') || ''
   const selectedTopic = searchParams.get('topic') || ''
-  const currentPage = Number(searchParams.get('page') || '1')
 
   // Local state for the search input to prevent keystroke lag
   const [localSearch, setLocalSearch] = useState(searchQuery)
@@ -126,6 +125,37 @@ export function ProblemsPageClient({ problems, userProgress }: ProblemsPageClien
   }, [problems, searchQuery, selectedDifficulty, selectedTopic])
 
   const totalPages = Math.max(1, Math.ceil(filteredCount / ITEMS_PER_PAGE))
+
+  // Parse, normalize and clamp current page
+  const rawPage = searchParams.get('page')
+  let parsedPage = Number(rawPage)
+  if (!rawPage || isNaN(parsedPage) || parsedPage <= 0 || !Number.isInteger(parsedPage)) {
+    parsedPage = 1
+  }
+  const currentPage = Math.min(parsedPage, totalPages)
+
+  // Synchronize URL if page parameter in URL is invalid or out of bounds
+  useEffect(() => {
+    const rawPageVal = searchParams.get('page')
+    if (rawPageVal === null) return // No page parameter, default is already page 1
+
+    const pageVal = Number(rawPageVal)
+    const isInvalid = isNaN(pageVal) || pageVal <= 0 || !Number.isInteger(pageVal)
+    const isOutOfBounds = pageVal > totalPages
+
+    if (isInvalid || isOutOfBounds) {
+      const targetPage = isOutOfBounds ? totalPages : 1
+      const params = new URLSearchParams(searchParams.toString())
+      if (targetPage > 1) {
+        params.set('page', String(targetPage))
+      } else {
+        params.delete('page')
+      }
+      const newParamsStr = params.toString()
+      const newUrl = newParamsStr ? `${pathname}?${newParamsStr}` : pathname
+      router.replace(newUrl, { scroll: false })
+    }
+  }, [searchParams, totalPages, pathname, router])
 
   return (
     <div className="flex flex-col gap-8 lg:flex-row">
