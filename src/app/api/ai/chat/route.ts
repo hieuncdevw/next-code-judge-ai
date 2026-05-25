@@ -1,7 +1,8 @@
-import type { NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { streamText } from 'ai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { openai } from '@ai-sdk/openai'
+import { getCurrentUser } from '@/lib/auth'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
@@ -32,6 +33,17 @@ function getMockReply(messages: Message[], problem: { title?: string } | null): 
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json(
+        {
+          error: 'UNAUTHORIZED',
+          message: 'Bạn cần đăng nhập để sử dụng AI Agent.',
+        },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json() as {
       messages?: Message[]
       problem?: { title: string; description: string } | null
@@ -121,7 +133,12 @@ Instructions:
     })
   } catch (err: unknown) {
     console.error('[POST /api/ai/chat] error:', err)
-    const message = err instanceof Error ? err.message : String(err)
-    return new Response(`Error generating response: ${message}`, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'INTERNAL_SERVER_ERROR',
+        message: 'Đã xảy ra lỗi khi xử lý yêu cầu.',
+      },
+      { status: 500 }
+    )
   }
 }

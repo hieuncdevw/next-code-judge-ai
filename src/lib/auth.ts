@@ -1,5 +1,4 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { prisma } from '@/lib/prisma'
 
 export type AuthUser = {
   id: string
@@ -30,26 +29,39 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User'
         const avatarUrl = user.imageUrl || null
 
-        const dbUser = await prisma.userProfile.upsert({
-          where: { clerkUserId },
-          update: {
-            name,
-            avatarUrl,
-          },
-          create: {
+        try {
+          const { prisma } = await import('@/lib/prisma')
+          const dbUser = await prisma.userProfile.upsert({
+            where: { clerkUserId },
+            update: {
+              name,
+              avatarUrl,
+            },
+            create: {
+              clerkUserId,
+              email,
+              name,
+              avatarUrl,
+            },
+          })
+
+          return {
+            id: dbUser.id,
+            clerkUserId: dbUser.clerkUserId,
+            email: dbUser.email,
+            name: dbUser.name,
+            avatarUrl: dbUser.avatarUrl,
+          }
+        } catch (dbErr) {
+          console.warn('[getCurrentUser] Database profile sync failed (Prisma init or DB offline):', dbErr)
+          // Return in-memory fallback user using clerk details
+          return {
+            id: `mock-clerk-db-${clerkUserId}`,
             clerkUserId,
             email,
             name,
             avatarUrl,
-          },
-        })
-
-        return {
-          id: dbUser.id,
-          clerkUserId: dbUser.clerkUserId,
-          email: dbUser.email,
-          name: dbUser.name,
-          avatarUrl: dbUser.avatarUrl,
+          }
         }
       }
     }
@@ -75,7 +87,16 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   if (isDev && allowDevFallback) {
     // Fallback developer user profile
     const defaultEmail = 'developer@nextcodejudge.ai'
+    const fallbackUser = {
+      id: 'mock-user-db-id',
+      clerkUserId: 'mock-clerk-user-12345',
+      email: defaultEmail,
+      name: 'Developer Profile (Offline)',
+      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80',
+    }
+
     try {
+      const { prisma } = await import('@/lib/prisma')
       const dbUser = await prisma.userProfile.upsert({
         where: { email: defaultEmail },
         update: {},
@@ -94,15 +115,9 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         name: dbUser.name,
         avatarUrl: dbUser.avatarUrl,
       }
-    } catch {
-      console.log('[getCurrentUser] Database offline. Returning in-memory fallback profile.')
-      return {
-        id: 'mock-user-db-id',
-        clerkUserId: 'mock-clerk-user-12345',
-        email: defaultEmail,
-        name: 'Developer Profile (Offline)',
-        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=80&h=80',
-      }
+    } catch (prismaErr) {
+      console.log('[getCurrentUser] Database offline or DATABASE_URL missing. Returning in-memory fallback profile:', prismaErr)
+      return fallbackUser
     }
   }
 

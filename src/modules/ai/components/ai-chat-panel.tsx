@@ -61,8 +61,21 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
         }),
       })
 
-      if (!response.ok || !response.body) {
-        throw new Error(`HTTP ${response.status}`)
+      if (!response.ok) {
+        let errorMessage = 'Sorry, something went wrong. Please try again.'
+        try {
+          const errorData = await response.json()
+          if (errorData && typeof errorData === 'object' && 'message' in errorData) {
+            errorMessage = String(errorData.message)
+          }
+        } catch {
+          // ignore JSON parse error
+        }
+        throw new Error(errorMessage)
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is empty.')
       }
 
       const reader = response.body.getReader()
@@ -89,11 +102,12 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
       }
     } catch (err) {
       // Replace placeholder with error message
+      const errMsg = err instanceof Error ? err.message : 'Sorry, something went wrong. Please try again.'
       setMessages((prev) => {
         const updated = [...prev]
         updated[updated.length - 1] = {
           role: 'assistant',
-          content: 'Sorry, something went wrong. Please try again.',
+          content: errMsg,
         }
         return updated
       })

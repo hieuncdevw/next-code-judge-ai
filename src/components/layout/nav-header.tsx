@@ -6,7 +6,20 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { SignInButton, SignUpButton, UserButton, Show } from '@clerk/nextjs'
+import { useAuth, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
+import type { ReactNode } from 'react'
+
+function SignedIn({ children }: { children: ReactNode }) {
+  const { isLoaded, userId } = useAuth()
+  if (!isLoaded) return null
+  return userId ? <>{children}</> : null
+}
+
+function SignedOut({ children }: { children: ReactNode }) {
+  const { isLoaded, userId } = useAuth()
+  if (!isLoaded) return null
+  return userId ? null : <>{children}</>
+}
 
 const navLinks = [
   { href: '/home', label: 'Home' },
@@ -69,7 +82,7 @@ export function NavHeader() {
               )}
               <span className="sr-only">Toggle theme</span>
             </Button>
-            <Show when="signed-out">
+            <SignedOut>
               <SignInButton mode="modal">
                 <Button variant="outline" size="sm" className="rounded-lg font-medium">
                   Đăng nhập
@@ -80,10 +93,10 @@ export function NavHeader() {
                   Đăng ký
                 </Button>
               </SignUpButton>
-            </Show>
-            <Show when="signed-in">
+            </SignedOut>
+            <SignedIn>
               <UserButton />
-            </Show>
+            </SignedIn>
           </div>
         </div>
       </div>
