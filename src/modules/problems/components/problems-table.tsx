@@ -86,7 +86,7 @@ export function ProblemsTable({
               </TableCell>
               <TableCell className="font-medium text-foreground">
                 <Link
-                  href={`/problems/${problem.slug}`}
+                  href={`/problems/${encodeURIComponent(problem.slug)}`}
                   className="hover:text-primary transition-colors hover:underline underline-offset-4"
                 >
                   {problem.title}

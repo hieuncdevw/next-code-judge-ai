@@ -59,6 +59,7 @@ interface ProblemPanelProps {
 // ── Component ────────────────────────────────────────────────────────────────
 export function ProblemPanel({ problem, submissions, isAuthenticated = false }: ProblemPanelProps) {
   const [activeTab, setActiveTab] = useState('description')
+  const sampleTestCases = problem?.testCases.filter((testCase) => testCase.isSample !== false) ?? []
 
   return (
     /*
@@ -139,9 +140,9 @@ export function ProblemPanel({ problem, submissions, isAuthenticated = false }: 
               </div>
 
               {/* Sample test cases */}
-              {problem.testCases.length > 0 && (
+              {sampleTestCases.length > 0 ? (
                 <div className="space-y-3">
-                  {problem.testCases.map((tc, i) => (
+                  {sampleTestCases.map((tc, i) => (
                     <div key={tc.id} className="space-y-1.5">
                       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Example {i + 1}
@@ -162,6 +163,10 @@ export function ProblemPanel({ problem, submissions, isAuthenticated = false }: 
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground border border-border/50">
+                  Sample test cases are not available.
                 </div>
               )}
 

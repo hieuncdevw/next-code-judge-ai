@@ -106,7 +106,7 @@ function getStatusConfig(status: RecentActivityStatus) {
   }
 }
 
-export function RecentActivityFeed({ submissions = defaultSubmissions, isAuthenticated = true }: RecentActivityFeedProps) {
+export function RecentActivityFeed({ submissions = defaultSubmissions, isAuthenticated = false }: RecentActivityFeedProps) {
   return (
     <Card className="bg-card border-border p-4 sm:p-6 lg:col-span-2">
       <h3 className="text-lg font-bold text-foreground mb-4">Recent Submissions</h3>

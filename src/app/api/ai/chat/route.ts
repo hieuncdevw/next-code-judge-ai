@@ -17,6 +17,7 @@ type ValidChatBody = {
 }
 
 const MAX_MESSAGES = 20
+const MAX_RAW_BODY_BYTES = 64 * 1024
 const MAX_MESSAGE_CONTENT_LENGTH = 4000
 const MAX_CODE_LENGTH = 20000
 const MAX_PROBLEM_DESCRIPTION_LENGTH = 10000
@@ -57,6 +58,16 @@ function getContextMessage(problem: ChatProblem | null, code: string, language: 
       currentEditorCode: code,
     }),
   }
+}
+
+function exceedsRawBodyLimit(request: NextRequest): boolean {
+  const contentLength = request.headers.get('content-length')
+  if (!contentLength) {
+    return false
+  }
+
+  const bytes = Number(contentLength)
+  return Number.isFinite(bytes) && bytes > MAX_RAW_BODY_BYTES
 }
 
 async function parseJsonBody(request: NextRequest): Promise<{ ok: true; value: unknown } | { ok: false }> {
@@ -281,6 +292,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const rateLimit = checkAiRateLimit(user.id)
+    if (!rateLimit.allowed) {
+      return jsonError(
+        'RATE_LIMITED',
+        'Too many AI chat requests. Please try again later.',
+        429
+      )
+    }
+
+    if (exceedsRawBodyLimit(request)) {
+      return jsonError(
+        'PAYLOAD_TOO_LARGE',
+        `Request body cannot exceed ${MAX_RAW_BODY_BYTES} bytes.`,
+        413
+      )
+    }
+
     const parsedBody = await parseJsonBody(request)
     if (!parsedBody.ok) {
       return jsonError('BAD_REQUEST', 'Invalid JSON request body.', 400)
@@ -289,15 +317,6 @@ export async function POST(request: NextRequest) {
     const validatedBody = validateChatBody(parsedBody.value)
     if (!validatedBody.ok) {
       return jsonError(validatedBody.error, validatedBody.message, validatedBody.status)
-    }
-
-    const rateLimit = checkAiRateLimit(user.id)
-    if (!rateLimit.allowed) {
-      return jsonError(
-        'RATE_LIMITED',
-        'Too many AI chat requests. Please try again later.',
-        429
-      )
     }
 
     const { messages, problem, code, language } = validatedBody.body

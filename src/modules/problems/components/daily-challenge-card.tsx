@@ -53,7 +53,7 @@ export function DailyChallengeCard({
         {description}
       </p>
 
-      <Link href={`/workspace?problem=${problemSlug}`}>
+      <Link href={{ pathname: '/workspace', query: { problem: problemSlug } }}>
         <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
           Solve Challenge
         </Button>
