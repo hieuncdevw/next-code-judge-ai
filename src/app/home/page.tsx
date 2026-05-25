@@ -94,7 +94,7 @@ export default async function HomePage() {
             <ContributionHeatmap />
 
             {/* Leaderboard */}
-            <GlobalLeaderboard currentUserRank={127} />
+            <GlobalLeaderboard />
 
             {/* AI Mentor Tip */}
             <AIMentorTip />
