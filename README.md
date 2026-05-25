@@ -9,7 +9,7 @@ Phát triển hệ thống luyện tập lập trình trực tuyến tích hợp
 Đây là hệ thống luyện tập lập trình trực tuyến cho phép người dùng giải bài tập thuật toán, chạy thử mã nguồn, submit bài làm và nhận kết quả chấm tự động. Hệ thống tích hợp trợ lý AI đa tác vụ nhằm hỗ trợ phân tích lỗi, tạo gợi ý và review code.
 
 ## Công nghệ sử dụng
-- Next.js 15
+- Next.js 16
 - TypeScript
 - Tailwind CSS
 - Shadcn UI
