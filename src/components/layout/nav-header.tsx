@@ -1,8 +1,7 @@
 'use client'
 
-import { useTheme } from 'next-themes'
-import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from './theme-toggle'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -29,7 +28,6 @@ const navLinks = [
 ]
 
 export function NavHeader() {
-  const { theme, setTheme } = useTheme()
   const pathname = usePathname()
 
   return (
@@ -69,19 +67,7 @@ export function NavHeader() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="rounded-lg"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-              <span className="sr-only">Toggle theme</span>
-            </Button>
+            <ThemeToggle />
             <SignedOut>
               <SignInButton mode="modal">
                 <Button variant="outline" size="sm" className="rounded-lg font-medium">

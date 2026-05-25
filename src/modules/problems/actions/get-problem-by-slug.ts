@@ -307,7 +307,7 @@ export async function getProblemBySlug(
     })
 
     if (!problem) {
-      return (MOCK_PROBLEMS[slug] as ProblemDetail) || null
+      return null
     }
 
     return {
@@ -315,7 +315,12 @@ export async function getProblemBySlug(
       difficulty: DIFFICULTY_LABEL[problem.difficulty],
     }
   } catch (err) {
-    console.warn(`[getProblemBySlug] Database error, falling back to mock problem list for "${slug}":`, err)
-    return (MOCK_PROBLEMS[slug] as ProblemDetail) || null
+    const isDev = process.env.NODE_ENV === 'development'
+    if (isDev) {
+      console.warn(`[getProblemBySlug] Database error, falling back to mock problem list for "${slug}":`, err)
+      return (MOCK_PROBLEMS[slug] as ProblemDetail) || null
+    }
+    console.error(`[getProblemBySlug] Database error in production:`, err)
+    return null
   }
 }

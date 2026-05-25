@@ -391,6 +391,7 @@ export async function runCode(payload: {
   code: string
 }): Promise<SubmissionResult> {
   const { problemId, problemSlug, language, code } = payload
+  const normalizedLanguage = language.toLowerCase()
   const submittedAt = new Date().toISOString()
 
   // 1. Auth check first
@@ -479,7 +480,7 @@ export async function runCode(payload: {
 
   // 6. Language support check
   const SUPPORTED_LANGUAGES = ['javascript', 'python']
-  if (!SUPPORTED_LANGUAGES.includes(language.toLowerCase())) {
+  if (!SUPPORTED_LANGUAGES.includes(normalizedLanguage)) {
     const testCasesCount = problem.testCases?.length || 2
     return {
       status: 'COMPILE_ERROR',
@@ -515,8 +516,8 @@ export async function runCode(payload: {
     }
   }
 
-  const wrappedCode = getWrappedCode(problem.slug, language, code)
-  const languageId = languageIds[language] || 63
+  const wrappedCode = getWrappedCode(problem.slug, normalizedLanguage, code)
+  const languageId = languageIds[normalizedLanguage] || 63
 
   const apiUrl = process.env.JUDGE0_API_URL || 'http://localhost:2358'
   const headers: Record<string, string> = {
@@ -610,7 +611,7 @@ export async function runCode(payload: {
           userId: user.id,
           problemId: problem.id,
           sourceCode: code,
-          language,
+          language: normalizedLanguage,
           judge0LanguageId: languageId,
           status: dbStatus,
           runtimeMs: overallStatus !== 'COMPILE_ERROR' ? Math.round(maxRuntime) : null,

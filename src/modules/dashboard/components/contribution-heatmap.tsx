@@ -17,10 +17,16 @@ function getHeatmapColor(count: number) {
   return 'bg-emerald-700 dark:bg-emerald-600'
 }
 
-const defaultData: HeatmapDay[] = Array.from({ length: 84 }, (_, i) => ({
-  date: new Date(Date.now() - (83 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-  count: Math.floor(Math.random() * 4),
-}))
+const BASE_DATE_TIME = new Date('2026-01-01T00:00:00.000Z').getTime()
+
+const defaultData: HeatmapDay[] = Array.from({ length: 84 }, (_, i) => {
+  const dateStr = new Date(BASE_DATE_TIME - (83 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const count = i % 7 === 0 ? 0 : (i % 3 === 0 ? 1 : (i % 5 === 0 ? 2 : (i % 11 === 0 ? 3 : 0)))
+  return {
+    date: dateStr,
+    count,
+  }
+})
 
 export function ContributionHeatmap({ data = defaultData }: ContributionHeatmapProps) {
   // Group data into weeks (7-day chunks)
