@@ -104,3 +104,29 @@ Tất cả các thành phần cốt lõi và tích hợp bên thứ ba đã đư
 > - `GEMINI_MODEL`: Đặt thành mô hình phù hợp (mặc định là `gemini-3.5-flash`).
 > - `JUDGE0_API_URL` & `JUDGE0_API_KEY`: Cấu hình endpoint chấm bài.
 > - `JUDGE0_RAPIDAPI_HOST`: Thiết lập nếu sử dụng dịch vụ thông qua RapidAPI.
+
+## 5. Backlog sau Clawpatch Review
+
+Các mục dưới đây chưa bắt buộc cho bản dev/local hiện tại, nhưng nên xử lý trước khi production thật hoặc khi có thời gian bổ sung test.
+
+### Production hardening
+
+- Thay AI chat rate limiter từ in-memory `Map` sang shared storage như Redis, Upstash, PostgreSQL hoặc platform rate limit service.
+- Bổ sung raw request body streaming cap cho `/api/ai/chat`, không chỉ dựa vào `Content-Length`.
+- Chuẩn hóa error state khi production database outage thay vì trả empty catalog nếu cần hiển thị lỗi dịch vụ rõ ràng.
+
+### Test coverage
+
+- Thêm test runner.
+- Viết test cho:
+  - Auth fallback / Clerk session.
+  - `/api/ai/chat` validation, unauthorized, rate limit.
+  - `runCode` testcase selection và Judge0 failure.
+  - Dashboard / RecentActivityFeed status rendering.
+
+### UX / correctness backlog
+
+- Preserve editor code theo từng problem/language để tránh mất code khi đổi language.
+- Cải thiện debounce search URL sync để tránh race với typing nhanh.
+- Chặn in-flight submission race khi user đổi problem trong lúc run đang chạy nếu cần nâng độ chắc chắn.
+- Refine `Button` / `Badge` `asChild` typing cho polymorphic props.
