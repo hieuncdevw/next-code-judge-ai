@@ -10,6 +10,7 @@ import { DailyChallengeCard } from "@/modules/problems/components/daily-challeng
 import { AIMentorTip } from "@/modules/ai/components/ai-mentor-tip";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { RecentActivityStatus } from "@/modules/dashboard/components/recent-activity-feed";
 
 export const metadata = {
   title: 'Home - Next Code Judge',
@@ -29,7 +30,7 @@ function formatRelativeTime(createdAt: Date): string {
 }
 
 export default async function HomePage() {
-  let submissions: { id: string; problemTitle: string; problemSlug: string; status: 'accepted' | 'wrong_answer'; executionTime: number; timestamp: string }[] | undefined = undefined;
+  let submissions: { id: string; problemTitle: string; problemSlug: string; status: RecentActivityStatus; executionTime: number; timestamp: string }[] | undefined = undefined;
   let username = 'User'
   let isAuthenticated = false
 
@@ -50,7 +51,7 @@ export default async function HomePage() {
           id: sub.id,
           problemTitle: sub.problem.title,
           problemSlug: sub.problem.slug,
-          status: sub.status === 'ACCEPTED' ? 'accepted' : 'wrong_answer' as const,
+          status: sub.status,
           executionTime: sub.runtimeMs ?? 0,
           timestamp: formatRelativeTime(sub.createdAt),
         }))

@@ -27,6 +27,10 @@ const navLinks = [
   { href: '/workspace', label: 'Workspace' },
 ]
 
+function isNavLinkActive(pathname: string, href: string) {
+  return href === '/home' ? pathname === '/home' : pathname.startsWith(href)
+}
+
 export function NavHeader() {
   const pathname = usePathname()
 
@@ -44,10 +48,7 @@ export function NavHeader() {
 
             <nav className="hidden md:flex items-center gap-6">
               {navLinks.map(({ href, label }) => {
-                const isActive =
-                  href === '/home'
-                    ? pathname === '/home'
-                    : pathname.startsWith(href)
+                const isActive = isNavLinkActive(pathname, href)
                 return (
                   <Link
                     key={href}
@@ -85,6 +86,26 @@ export function NavHeader() {
             </SignedIn>
           </div>
         </div>
+
+        <nav className="mt-3 flex md:hidden items-center gap-2 overflow-x-auto">
+          {navLinks.map(({ href, label }) => {
+            const isActive = isNavLinkActive(pathname, href)
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                )}
+              >
+                {label}
+              </Link>
+            )
+          })}
+        </nav>
       </div>
     </header>
   )

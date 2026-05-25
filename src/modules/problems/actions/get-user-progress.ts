@@ -71,7 +71,12 @@ export async function getUserProgress(): Promise<UserProgress> {
         Hard: 0,
       };
 
+      const solvedByProblemId = new Map<string, (typeof solvedProgress)[number]>();
       solvedProgress.forEach((p) => {
+        solvedByProblemId.set(p.problemId, p);
+      });
+
+      solvedByProblemId.forEach((p) => {
         if (p.problem.difficulty === Difficulty.EASY) {
           solvedByDifficulty.Easy++;
         } else if (p.problem.difficulty === Difficulty.MEDIUM) {
@@ -83,7 +88,7 @@ export async function getUserProgress(): Promise<UserProgress> {
 
       return {
         isAuthenticated: true,
-        solvedCount: solvedProgress.length,
+        solvedCount: solvedByProblemId.size,
         totalCount: totalCount > 0 ? totalCount : 15,
         solvedByDifficulty,
       };

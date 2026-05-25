@@ -17,7 +17,7 @@ interface StatItem {
 export function ProgressCard({ userProgress }: ProgressCardProps) {
   const solved = userProgress.solvedCount
   const total = userProgress.totalCount
-  const percentage = total > 0 ? Math.round((solved / total) * 100) : 0
+  const percentage = total > 0 ? Math.min(100, Math.round((solved / total) * 100)) : 0
 
   const stats: StatItem[] = [
     { label: 'Easy', value: userProgress.solvedByDifficulty.Easy, color: 'bg-easy' },
