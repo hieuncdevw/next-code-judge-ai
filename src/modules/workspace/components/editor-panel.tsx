@@ -14,9 +14,6 @@ import { Button } from '@/components/ui/button'
 const languages = [
   { value: 'javascript', label: 'JavaScript' },
   { value: 'python', label: 'Python' },
-  { value: 'java', label: 'Java' },
-  { value: 'cpp', label: 'C++' },
-  { value: 'typescript', label: 'TypeScript' },
 ]
 
 interface EditorPanelProps {

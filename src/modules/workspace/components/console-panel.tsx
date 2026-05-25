@@ -95,6 +95,7 @@ export function ConsolePanel({
   const [isPending, startTransition] = useTransition()
 
   const problemId = problem?.id ?? ''
+  const problemSlug = problem?.slug ?? ''
   const testCases: WorkspaceProblem['testCases'] =
     problem?.testCases?.filter((tc) => tc.isSample) || []
 
@@ -102,7 +103,7 @@ export function ConsolePanel({
     setActiveTab('result')
 
     startTransition(async () => {
-      const result = await runCode({ problemId, language, code })
+      const result = await runCode({ problemId, problemSlug, language, code })
       setLastResult(result)
       onSubmissionResult(result)
     })

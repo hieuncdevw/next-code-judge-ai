@@ -386,13 +386,14 @@ const MOCK_PROBLEMS: Record<string, MockProblem> = {
 
 export async function runCode(payload: {
   problemId: string
+  problemSlug?: string
   language: string
   code: string
 }): Promise<SubmissionResult> {
-  const { problemId, language, code } = payload
+  const { problemId, problemSlug, language, code } = payload
   const submittedAt = new Date().toISOString()
 
-  // 1. Fetch user details from DB resiliently
+  // 1. Auth check first
   const user = await getCurrentUser()
 
   if (!user) {
@@ -407,40 +408,65 @@ export async function runCode(payload: {
   }
 
   let problem = null
-  try {
-    if (problemId && problemId.length > 20) { // UUID check
-      problem = await prisma.problem.findUnique({
-        where: { id: problemId },
-        include: { testCases: true },
-      })
-    }
-  } catch (err) {
-    console.warn('[runCode] Database lookup by id failed, checking fallback:', err)
-  }
 
-  if (!problem) {
-    const slug = MOCK_PROBLEMS[problemId] ? problemId : 'two-sum'
+  // 2. Resolve by slug first if provided
+  if (problemSlug) {
     try {
       problem = await prisma.problem.findFirst({
-        where: { slug },
+        where: { slug: problemSlug },
         include: { testCases: true },
       })
     } catch (err) {
-      console.warn(`[runCode] Database lookup by slug "${slug}" failed, using mock data:`, err)
+      console.warn(`[runCode] Database lookup by slug "${problemSlug}" failed, checking fallback:`, err)
     }
 
-    if (!problem) {
-      problem = MOCK_PROBLEMS[slug]
+    if (!problem && MOCK_PROBLEMS[problemSlug]) {
+      problem = MOCK_PROBLEMS[problemSlug]
     }
   }
 
-  const SUPPORTED_SLUGS = ['two-sum', 'valid-parentheses', 'palindrome-number']
-  const isExecutable = problem && SUPPORTED_SLUGS.includes(problem.slug)
+  // 3. Otherwise resolve by exact DB id
+  if (!problem && problemId) {
+    try {
+      if (problemId.length > 20) { // UUID check
+        problem = await prisma.problem.findUnique({
+          where: { id: problemId },
+          include: { testCases: true },
+        })
+      }
+    } catch (err) {
+      console.warn(`[runCode] Database lookup by id "${problemId}" failed:`, err)
+    }
 
-  if (!isExecutable || !problem) {
-    const testCasesCount = problem
-      ? (problem.testCases?.length || 2)
-      : 2
+    // 4. Otherwise resolve by mock id/slug only if explicitly known
+    if (!problem) {
+      const foundMockKey = Object.keys(MOCK_PROBLEMS).find(
+        (key) => MOCK_PROBLEMS[key].id === problemId || MOCK_PROBLEMS[key].slug === problemId
+      )
+      if (foundMockKey) {
+        problem = MOCK_PROBLEMS[foundMockKey]
+      }
+    }
+  }
+
+  // If unknown, return "Problem Not Found" error
+  if (!problem) {
+    return {
+      status: 'COMPILE_ERROR',
+      statusLabel: 'Problem Not Found',
+      passedTests: 0,
+      totalTests: 0,
+      submittedAt,
+      errorMessage: 'Không tìm thấy bài tập được chọn. Vui lòng tải lại trang hoặc chọn lại bài.',
+    }
+  }
+
+  // 5. Display-only check
+  const SUPPORTED_SLUGS = ['two-sum', 'valid-parentheses', 'palindrome-number']
+  const isExecutable = SUPPORTED_SLUGS.includes(problem.slug)
+
+  if (!isExecutable) {
+    const testCasesCount = problem.testCases?.length || 2
     return {
       status: 'DISPLAY_ONLY',
       statusLabel: 'Display Only',
@@ -448,6 +474,20 @@ export async function runCode(payload: {
       totalTests: testCasesCount,
       submittedAt,
       errorMessage: 'Bài này hiện chỉ hỗ trợ xem đề. Chạy code chỉ khả dụng cho Two Sum, Valid Parentheses và Palindrome Number.',
+    }
+  }
+
+  // 6. Language support check
+  const SUPPORTED_LANGUAGES = ['javascript', 'python']
+  if (!SUPPORTED_LANGUAGES.includes(language.toLowerCase())) {
+    const testCasesCount = problem.testCases?.length || 2
+    return {
+      status: 'COMPILE_ERROR',
+      statusLabel: 'Unsupported Language',
+      passedTests: 0,
+      totalTests: testCasesCount,
+      submittedAt,
+      errorMessage: 'Ngôn ngữ này chưa được hỗ trợ chạy code. Hiện tại chỉ hỗ trợ JavaScript và Python.',
     }
   }
 
