@@ -281,12 +281,10 @@ export async function POST(request: NextRequest) {
     const hasOpenAI = !!process.env.OPENAI_API_KEY
 
     if (hasGemini || hasOpenAI) {
-      const geminiModel = process.env.GEMINI_MODEL ?? 'gemini-3.5-flash'
-      const googleProvider = createGoogleGenerativeAI({
-        apiKey: geminiApiKey,
-      })
       const model = hasGemini
-        ? googleProvider(geminiModel)
+        ? createGoogleGenerativeAI({
+          apiKey: geminiApiKey,
+        })(process.env.GEMINI_MODEL ?? 'gemini-3.5-flash')
         : openai('gpt-4o-mini')
 
       const problemText = problem

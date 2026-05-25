@@ -16,6 +16,7 @@ export type TestCaseRunResult = {
   status: SubmissionStatus
   statusLabel: string
   passed: boolean
+  isSample?: boolean
   input: string
   expectedOutput: string
   actualOutput?: string
@@ -50,6 +51,14 @@ const languageIds: Record<string, number> = {
 const RAPIDAPI_SUBMIT_DELAY_MS = 1200
 const RAPIDAPI_POLL_DELAY_MS = 1000
 
+interface LocalTestCase {
+  id: string
+  input: string
+  expectedOutput: string
+  isSample: boolean
+  orderIndex: number
+}
+
 function getStatusLabel(status: SubmissionStatus): string {
   return status
     .toLowerCase()
@@ -64,6 +73,30 @@ function getSubmissionStatusFromJudge0(statusId: number): SubmissionStatus {
   if (statusId === 5) return 'TIME_LIMIT_EXCEEDED'
   if (statusId === 6) return 'COMPILE_ERROR'
   return 'RUNTIME_ERROR'
+}
+
+function getSafeTestCaseInput(testCase: LocalTestCase, index: number): string {
+  return testCase.isSample ? testCase.input : `Hidden test case ${index + 1}`
+}
+
+function getSafeExpectedOutput(testCase: LocalTestCase): string {
+  return testCase.isSample ? testCase.expectedOutput : 'Hidden'
+}
+
+function getWrongAnswerMessage(testCase: LocalTestCase, stdout: string, index: number): string {
+  if (!testCase.isSample) {
+    return `Wrong Answer on hidden testcase ${index + 1}.`
+  }
+
+  return `Wrong Answer on testcase.\nInput: ${testCase.input}\nOutput: ${stdout}\nExpected: ${testCase.expectedOutput}`
+}
+
+function getRuntimeErrorMessage(testCase: LocalTestCase, stderr: string, index: number): string {
+  if (!testCase.isSample) {
+    return `Runtime Error on hidden testcase ${index + 1}.`
+  }
+
+  return stderr || 'Runtime Error'
 }
 
 /**
@@ -452,6 +485,7 @@ export async function runCode(payload: {
   }
 
   let problem = null
+  let problemSource: 'database' | 'mock' | null = null
 
   // 2. Resolve by slug first if provided
   if (problemSlug) {
@@ -460,12 +494,16 @@ export async function runCode(payload: {
         where: { slug: problemSlug },
         include: { testCases: true },
       })
+      if (problem) {
+        problemSource = 'database'
+      }
     } catch (err) {
       console.warn(`[runCode] Database lookup by slug "${problemSlug}" failed, checking fallback:`, err)
     }
 
     if (!problem && MOCK_PROBLEMS[problemSlug]) {
       problem = MOCK_PROBLEMS[problemSlug]
+      problemSource = 'mock'
     }
   }
 
@@ -477,6 +515,9 @@ export async function runCode(payload: {
           where: { id: problemId },
           include: { testCases: true },
         })
+        if (problem) {
+          problemSource = 'database'
+        }
       }
     } catch (err) {
       console.warn(`[runCode] Database lookup by id "${problemId}" failed:`, err)
@@ -489,6 +530,7 @@ export async function runCode(payload: {
       )
       if (foundMockKey) {
         problem = MOCK_PROBLEMS[foundMockKey]
+        problemSource = 'mock'
       }
     }
   }
@@ -535,18 +577,8 @@ export async function runCode(payload: {
     }
   }
 
-  interface LocalTestCase {
-  id: string
-  input: string
-  expectedOutput: string
-  isSample: boolean
-  orderIndex: number
-}
-
-  const testCases: LocalTestCase[] = ((problem?.testCases as LocalTestCase[]) ?? []).filter((tc) => tc.isSample)
-  if (testCases.length === 0 && problem?.testCases) {
-    testCases.push(...(problem.testCases as LocalTestCase[]))
-  }
+  const testCases: LocalTestCase[] = [...(((problem?.testCases as LocalTestCase[]) ?? []))]
+    .sort((a, b) => a.orderIndex - b.orderIndex)
 
   if (!problem || testCases.length === 0) {
     return {
@@ -611,10 +643,11 @@ export async function runCode(payload: {
     let errorMessage: string | undefined = undefined
     const testResults: TestCaseRunResult[] = []
 
-    for (const res of results) {
+    for (let i = 0; i < results.length; i++) {
+      const res = results[i]
       const testStatus = getSubmissionStatusFromJudge0(res.statusId)
       const testErrorMessage = res.statusId !== 3
-        ? (res.stderr || res.compile_output || undefined)
+        ? (res.testCase.isSample ? (res.stderr || res.compile_output || undefined) : getStatusLabel(testStatus))
         : undefined
 
       testResults.push({
@@ -622,9 +655,10 @@ export async function runCode(payload: {
         status: testStatus,
         statusLabel: getStatusLabel(testStatus),
         passed: testStatus === 'ACCEPTED',
-        input: res.testCase.input,
-        expectedOutput: res.testCase.expectedOutput,
-        actualOutput: res.stdout || undefined,
+        isSample: res.testCase.isSample,
+        input: getSafeTestCaseInput(res.testCase, i),
+        expectedOutput: getSafeExpectedOutput(res.testCase),
+        actualOutput: res.testCase.isSample ? (res.stdout || undefined) : undefined,
         runtime: res.time !== undefined ? Math.round(res.time) : undefined,
         memory: res.memory,
         errorMessage: testErrorMessage,
@@ -636,15 +670,16 @@ export async function runCode(payload: {
         if (!failedStatus) {
           if (testStatus === 'WRONG_ANSWER') {
             failedStatus = testStatus
-            errorMessage = `Wrong Answer on testcase.\nInput: ${res.testCase.input}\nOutput: ${res.stdout}\nExpected: ${res.testCase.expectedOutput}`
+            errorMessage = getWrongAnswerMessage(res.testCase, res.stdout, i)
           } else if (testStatus === 'TIME_LIMIT_EXCEEDED') {
             failedStatus = testStatus
+            errorMessage = res.testCase.isSample ? undefined : `Time Limit Exceeded on hidden testcase ${i + 1}.`
           } else if (testStatus === 'COMPILE_ERROR') {
             failedStatus = testStatus
             errorMessage = res.compile_output || 'Compilation Error'
           } else {
             failedStatus = testStatus
-            errorMessage = res.stderr || 'Runtime Error'
+            errorMessage = getRuntimeErrorMessage(res.testCase, res.stderr, i)
           }
         }
       }
@@ -662,103 +697,107 @@ export async function runCode(payload: {
 
     // 4. Save Submission & TestCaseResults to database
     let finalSubmittedAt = submittedAt
-    try {
-      const dbStatus = overallStatus as PrismaStatus
-      const submission = await prisma.submission.create({
-        data: {
-          userId: user.id,
-          problemId: problem.id,
-          sourceCode: code,
-          language: normalizedLanguage,
-          judge0LanguageId: languageId,
-          status: dbStatus,
-          runtimeMs: overallStatus !== 'COMPILE_ERROR' ? Math.round(maxRuntime) : null,
-          memoryKb: overallStatus !== 'COMPILE_ERROR' ? maxMemory : null,
-          errorMessage: errorMessage || null,
-          results: {
-            create: results.map((res) => {
-              const tcStatus = getSubmissionStatusFromJudge0(res.statusId) as PrismaStatus
+    if (problemSource === 'database') {
+      try {
+        const dbStatus = overallStatus as PrismaStatus
+        const submission = await prisma.submission.create({
+          data: {
+            userId: user.id,
+            problemId: problem.id,
+            sourceCode: code,
+            language: normalizedLanguage,
+            judge0LanguageId: languageId,
+            status: dbStatus,
+            runtimeMs: overallStatus !== 'COMPILE_ERROR' ? Math.round(maxRuntime) : null,
+            memoryKb: overallStatus !== 'COMPILE_ERROR' ? maxMemory : null,
+            errorMessage: errorMessage || null,
+            results: {
+              create: results.map((res) => {
+                const tcStatus = getSubmissionStatusFromJudge0(res.statusId) as PrismaStatus
 
-              return {
-                testCaseId: res.testCase.id,
-                input: res.testCase.input,
-                expectedOutput: res.testCase.expectedOutput,
-                actualOutput: res.stdout || null,
-                status: tcStatus,
-                runtimeMs: res.time !== undefined ? Math.round(res.time) : null,
-                memoryKb: res.memory || null,
-                errorMessage: res.statusId !== 3 ? (res.stderr || res.compile_output || null) : null,
-              }
-            }),
+                return {
+                  testCaseId: res.testCase.id,
+                  input: res.testCase.input,
+                  expectedOutput: res.testCase.expectedOutput,
+                  actualOutput: res.stdout || null,
+                  status: tcStatus,
+                  runtimeMs: res.time !== undefined ? Math.round(res.time) : null,
+                  memoryKb: res.memory || null,
+                  errorMessage: res.statusId !== 3 ? (res.stderr || res.compile_output || null) : null,
+                }
+              }),
+            },
           },
-        },
-      })
-      finalSubmittedAt = submission.createdAt.toISOString()
+        })
+        finalSubmittedAt = submission.createdAt.toISOString()
 
-      // 5. Update User Progress for this problem atomically (race condition safe)
-      if (overallStatus === 'ACCEPTED') {
-        const roundedRuntime = Math.round(maxRuntime)
-        let attempts = 0
-        while (attempts < 2) {
-          try {
-            await prisma.$transaction(async (tx) => {
-              const existingProgress = await tx.problemProgress.findUnique({
-                where: {
-                  userId_problemId: {
-                    userId: user.id,
-                    problemId: problem.id,
-                  },
-                },
-              })
-
-              if (existingProgress) {
-                const bestRuntime = existingProgress.bestRuntimeMs !== null
-                  ? Math.min(existingProgress.bestRuntimeMs, roundedRuntime)
-                  : roundedRuntime
-
-                const bestMemory = existingProgress.bestMemoryKb !== null
-                  ? Math.min(existingProgress.bestMemoryKb, maxMemory)
-                  : maxMemory
-
-                await tx.problemProgress.update({
+        // 5. Update User Progress for this problem atomically (race condition safe)
+        if (overallStatus === 'ACCEPTED') {
+          const roundedRuntime = Math.round(maxRuntime)
+          let attempts = 0
+          while (attempts < 2) {
+            try {
+              await prisma.$transaction(async (tx) => {
+                const existingProgress = await tx.problemProgress.findUnique({
                   where: {
-                    id: existingProgress.id,
-                  },
-                  data: {
-                    isSolved: true,
-                    bestRuntimeMs: bestRuntime,
-                    bestMemoryKb: bestMemory,
+                    userId_problemId: {
+                      userId: user.id,
+                      problemId: problem.id,
+                    },
                   },
                 })
-              } else {
-                await tx.problemProgress.create({
-                  data: {
-                    userId: user.id,
-                    problemId: problem.id,
-                    isSolved: true,
-                    solvedAt: new Date(),
-                    bestRuntimeMs: roundedRuntime,
-                    bestMemoryKb: maxMemory,
-                  },
-                })
+
+                if (existingProgress) {
+                  const bestRuntime = existingProgress.bestRuntimeMs !== null
+                    ? Math.min(existingProgress.bestRuntimeMs, roundedRuntime)
+                    : roundedRuntime
+
+                  const bestMemory = existingProgress.bestMemoryKb !== null
+                    ? Math.min(existingProgress.bestMemoryKb, maxMemory)
+                    : maxMemory
+
+                  await tx.problemProgress.update({
+                    where: {
+                      id: existingProgress.id,
+                    },
+                    data: {
+                      isSolved: true,
+                      bestRuntimeMs: bestRuntime,
+                      bestMemoryKb: bestMemory,
+                    },
+                  })
+                } else {
+                  await tx.problemProgress.create({
+                    data: {
+                      userId: user.id,
+                      problemId: problem.id,
+                      isSolved: true,
+                      solvedAt: new Date(),
+                      bestRuntimeMs: roundedRuntime,
+                      bestMemoryKb: maxMemory,
+                    },
+                  })
+                }
+              })
+              break // Success! Exit the loop.
+            } catch (err) {
+              attempts++
+              // If it's a unique constraint error (P2002 in Prisma), concurrent creation occurred.
+              // Retry the transaction so it performs an update instead.
+              const prismaError = err as { code?: string }
+              if (prismaError?.code === 'P2002' && attempts < 2) {
+                console.warn('[runCode] ProblemProgress concurrent create conflict, retrying transaction as update...')
+                continue
               }
-            })
-            break // Success! Exit the loop.
-          } catch (err) {
-            attempts++
-            // If it's a unique constraint error (P2002 in Prisma), concurrent creation occurred.
-            // Retry the transaction so it performs an update instead.
-            const prismaError = err as { code?: string }
-            if (prismaError?.code === 'P2002' && attempts < 2) {
-              console.warn('[runCode] ProblemProgress concurrent create conflict, retrying transaction as update...')
-              continue
+              throw err // Re-throw if other error or out of attempts
             }
-            throw err // Re-throw if other error or out of attempts
           }
         }
+      } catch (dbErr) {
+        console.error('[runCode] Database persistence failed, proceeding without saving:', dbErr)
       }
-    } catch (dbErr) {
-      console.error('[runCode] Database persistence failed, proceeding without saving:', dbErr)
+    } else {
+      console.warn('[runCode] Skipping persistence for mock fallback problem:', problem.slug)
     }
 
     return {

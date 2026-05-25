@@ -160,7 +160,13 @@ export async function getProblems(): Promise<ProblemRow[]> {
       difficulty: DIFFICULTY_LABEL[p.difficulty],
     }));
   } catch (err) {
-    console.warn('[getProblems] Database offline, returning mock problems:', err)
-    return MOCK_PROBLEM_ROWS
+    const isDev = process.env.NODE_ENV === "development";
+    if (isDev) {
+      console.warn('[getProblems] Database offline, returning mock problems:', err)
+      return MOCK_PROBLEM_ROWS
+    }
+
+    console.error('[getProblems] Database error in production:', err)
+    return []
   }
 }
