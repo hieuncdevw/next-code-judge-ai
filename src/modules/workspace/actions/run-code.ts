@@ -106,7 +106,12 @@ if len(lines) >= 2:
 ${userCode}
 
 const fs = require('fs');
-const s = fs.readFileSync(0, 'utf-8').trim();
+const rawInput = fs.readFileSync(0, 'utf-8').trim();
+let s = rawInput;
+try {
+  const parsed = JSON.parse(rawInput);
+  if (typeof parsed === 'string') s = parsed;
+} catch {}
 const result = isValid(s);
 console.log(result ? "true" : "false");
       `.trim()
@@ -116,7 +121,15 @@ console.log(result ? "true" : "false");
 ${userCode}
 
 import sys
-s = sys.stdin.read().strip()
+import json
+raw_input = sys.stdin.read().strip()
+s = raw_input
+try:
+    parsed = json.loads(raw_input)
+    if isinstance(parsed, str):
+        s = parsed
+except Exception:
+    pass
 result = isValid(s)
 print("true" if result else "false")
       `.trim()
@@ -276,9 +289,9 @@ const MOCK_PROBLEMS: Record<string, MockProblem> = {
     slug: 'valid-parentheses',
     difficulty: 'Easy',
     testCases: [
-      { id: 'vp-tc-1', input: '"()"', expectedOutput: "true", isSample: true, orderIndex: 0 },
-      { id: 'vp-tc-2', input: '"()[]{}"', expectedOutput: "true", isSample: true, orderIndex: 1 },
-      { id: 'vp-tc-3', input: '"(]"', expectedOutput: "false", isSample: true, orderIndex: 2 },
+      { id: 'vp-tc-1', input: "()", expectedOutput: "true", isSample: true, orderIndex: 0 },
+      { id: 'vp-tc-2', input: "()[]{}", expectedOutput: "true", isSample: true, orderIndex: 1 },
+      { id: 'vp-tc-3', input: "(]", expectedOutput: "false", isSample: true, orderIndex: 2 },
     ]
   },
   'palindrome-number': {

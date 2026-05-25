@@ -103,9 +103,25 @@ export function ConsolePanel({
     setActiveTab('result')
 
     startTransition(async () => {
-      const result = await runCode({ problemId, problemSlug, language, code })
-      setLastResult(result)
-      onSubmissionResult(result)
+      try {
+        const result = await runCode({ problemId, problemSlug, language, code })
+        setLastResult(result)
+        onSubmissionResult(result)
+      } catch (err) {
+        console.error('[ConsolePanel] runCode failed:', err)
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        const syntheticResult: SubmissionResult = {
+          status: 'RUNTIME_ERROR',
+          statusLabel: 'Run Failed',
+          passedTests: 0,
+          totalTests: testCases.length,
+          submittedAt: new Date().toISOString(),
+          errorMessage: `Could not run code right now. Please check the judge service and try again.\n\nDetails: ${message}`,
+          testResults: [],
+        }
+        setLastResult(syntheticResult)
+        onSubmissionResult(syntheticResult)
+      }
     })
   }
 
