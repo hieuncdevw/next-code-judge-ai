@@ -640,48 +640,67 @@ export async function runCode(payload: {
       })
       finalSubmittedAt = submission.createdAt.toISOString()
 
-      // 5. Update User Progress for this problem
+      // 5. Update User Progress for this problem atomically (race condition safe)
       if (overallStatus === 'ACCEPTED') {
         const roundedRuntime = Math.round(maxRuntime)
-        const existingProgress = await prisma.problemProgress.findUnique({
-          where: {
-            userId_problemId: {
-              userId: user.id,
-              problemId: problem.id,
-            },
-          },
-        })
+        let attempts = 0
+        while (attempts < 2) {
+          try {
+            await prisma.$transaction(async (tx) => {
+              const existingProgress = await tx.problemProgress.findUnique({
+                where: {
+                  userId_problemId: {
+                    userId: user.id,
+                    problemId: problem.id,
+                  },
+                },
+              })
 
-        const bestRuntime = existingProgress?.bestRuntimeMs
-          ? Math.min(existingProgress.bestRuntimeMs, roundedRuntime)
-          : roundedRuntime
+              if (existingProgress) {
+                const bestRuntime = existingProgress.bestRuntimeMs !== null
+                  ? Math.min(existingProgress.bestRuntimeMs, roundedRuntime)
+                  : roundedRuntime
 
-        const bestMemory = existingProgress?.bestMemoryKb
-          ? Math.min(existingProgress.bestMemoryKb, maxMemory)
-          : maxMemory
+                const bestMemory = existingProgress.bestMemoryKb !== null
+                  ? Math.min(existingProgress.bestMemoryKb, maxMemory)
+                  : maxMemory
 
-        await prisma.problemProgress.upsert({
-          where: {
-            userId_problemId: {
-              userId: user.id,
-              problemId: problem.id,
-            },
-          },
-          update: {
-            isSolved: true,
-            solvedAt: existingProgress?.solvedAt || new Date(),
-            bestRuntimeMs: bestRuntime,
-            bestMemoryKb: bestMemory,
-          },
-          create: {
-            userId: user.id,
-            problemId: problem.id,
-            isSolved: true,
-            solvedAt: new Date(),
-            bestRuntimeMs: roundedRuntime,
-            bestMemoryKb: maxMemory,
-          },
-        })
+                await tx.problemProgress.update({
+                  where: {
+                    id: existingProgress.id,
+                  },
+                  data: {
+                    isSolved: true,
+                    bestRuntimeMs: bestRuntime,
+                    bestMemoryKb: bestMemory,
+                  },
+                })
+              } else {
+                await tx.problemProgress.create({
+                  data: {
+                    userId: user.id,
+                    problemId: problem.id,
+                    isSolved: true,
+                    solvedAt: new Date(),
+                    bestRuntimeMs: roundedRuntime,
+                    bestMemoryKb: maxMemory,
+                  },
+                })
+              }
+            })
+            break // Success! Exit the loop.
+          } catch (err) {
+            attempts++
+            // If it's a unique constraint error (P2002 in Prisma), concurrent creation occurred.
+            // Retry the transaction so it performs an update instead.
+            const prismaError = err as { code?: string }
+            if (prismaError?.code === 'P2002' && attempts < 2) {
+              console.warn('[runCode] ProblemProgress concurrent create conflict, retrying transaction as update...')
+              continue
+            }
+            throw err // Re-throw if other error or out of attempts
+          }
+        }
       }
     } catch (dbErr) {
       console.error('[runCode] Database persistence failed, proceeding without saving:', dbErr)
