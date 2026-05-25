@@ -111,6 +111,10 @@ export function ConsolePanel({
     problem?.testCases?.filter((tc) => tc.isSample) || []
 
   const handleRunCode = () => {
+    if (!problem) {
+      return
+    }
+
     setActiveTab('result')
 
     startTransition(async () => {
@@ -206,7 +210,11 @@ export function ConsolePanel({
 
           {!isPending && lastResult === null && (
             <div className="text-center py-10 text-muted-foreground select-none">
-              <p className="text-sm">Click &quot;Run Code&quot; to execute your solution.</p>
+              <p className="text-sm">
+                {problem
+                  ? 'Click "Run Code" to execute your solution.'
+                  : 'Select a problem before running code.'}
+              </p>
             </div>
           )}
 
@@ -314,7 +322,7 @@ export function ConsolePanel({
       <div className="shrink-0 border-t border-border p-3">
         <Button
           onClick={handleRunCode}
-          disabled={isPending}
+          disabled={isPending || !problem}
           className="w-full h-9 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white gap-2 transition-all duration-150"
         >
           {isPending ? (

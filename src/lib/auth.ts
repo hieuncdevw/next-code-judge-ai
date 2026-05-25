@@ -25,7 +25,10 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     if (clerkUserId) {
       const user = await currentUser()
       if (user) {
-        const email = user.emailAddresses[0]?.emailAddress || `${clerkUserId}@example.com`
+        const email = user.primaryEmailAddress?.emailAddress
+          || user.emailAddresses.find((emailAddress) => emailAddress.id === user.primaryEmailAddressId)?.emailAddress
+          || user.emailAddresses[0]?.emailAddress
+          || `${clerkUserId}@example.com`
         const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User'
         const avatarUrl = user.imageUrl || null
 
