@@ -16,6 +16,12 @@ interface AIChatPanelProps {
   language: string
 }
 
+function isAbortError(err: unknown) {
+  return err instanceof DOMException
+    ? err.name === 'AbortError'
+    : err instanceof Error && err.name === 'AbortError'
+}
+
 export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -29,6 +35,14 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
 
   // Scroll to bottom after each message update
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const isMountedRef = useRef(true)
+
+  const abortActiveRequest = useCallback(() => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+  }, [])
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
@@ -37,9 +51,25 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
     scrollToBottom()
   }, [messages, scrollToBottom])
 
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      abortActiveRequest()
+    }
+  }, [abortActiveRequest])
+
+  const handleClose = useCallback(() => {
+    abortActiveRequest()
+    onClose()
+  }, [abortActiveRequest, onClose])
+
   const handleSendMessage = useCallback(async () => {
     const text = input.trim()
     if (!text || isStreaming) return
+
+    abortActiveRequest()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
 
     const userMessage: Message = { role: 'user', content: text }
     const nextMessages = [...messages, userMessage]
@@ -50,8 +80,10 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
     setIsStreaming(true)
 
     try {
+      let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: nextMessages,
@@ -78,15 +110,20 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
         throw new Error('Response body is empty.')
       }
 
-      const reader = response.body.getReader()
+      reader = response.body.getReader()
       const decoder = new TextDecoder()
 
       // Stream tokens into the last assistant message
       while (true) {
+        if (controller.signal.aborted) break
+
         const { done, value } = await reader.read()
         if (done) break
+        if (controller.signal.aborted) break
 
         const chunk = decoder.decode(value, { stream: true })
+
+        if (!isMountedRef.current) break
 
         setMessages((prev) => {
           const updated = [...prev]
@@ -100,22 +137,37 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
           return updated
         })
       }
+
+      if (controller.signal.aborted) {
+        await reader.cancel().catch(() => undefined)
+      }
     } catch (err) {
+      if (isAbortError(err) || controller.signal.aborted) {
+        return
+      }
+
       // Replace placeholder with error message
       const errMsg = err instanceof Error ? err.message : 'Sorry, something went wrong. Please try again.'
-      setMessages((prev) => {
-        const updated = [...prev]
-        updated[updated.length - 1] = {
-          role: 'assistant',
-          content: errMsg,
-        }
-        return updated
-      })
+      if (isMountedRef.current) {
+        setMessages((prev) => {
+          const updated = [...prev]
+          updated[updated.length - 1] = {
+            role: 'assistant',
+            content: errMsg,
+          }
+          return updated
+        })
+      }
       console.error('[AIChatPanel] streaming error:', err)
     } finally {
-      setIsStreaming(false)
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null
+        if (isMountedRef.current) {
+          setIsStreaming(false)
+        }
+      }
     }
-  }, [input, isStreaming, messages, code, language, problem])
+  }, [input, isStreaming, messages, code, language, problem, abortActiveRequest])
 
   return (
     /* min-h-0 is required so flex children don't overflow the ResizablePanel */
@@ -127,7 +179,7 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
           variant="ghost"
           size="sm"
           className="h-6 w-6 p-0"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <X className="h-4 w-4" />
         </Button>
