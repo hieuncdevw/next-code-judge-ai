@@ -41,3 +41,5 @@ Phát triển hệ thống luyện tập lập trình trực tuyến tích hợp
 ```bash
 npm install
 npm run dev
+npm run typecheck
+npm run verify
