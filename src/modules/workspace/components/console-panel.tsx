@@ -185,6 +185,7 @@ export function ConsolePanel({
 
           {!isPending && lastResult !== null && (() => {
             const cfg = getStatusConfig(lastResult.status)
+            const testResults = lastResult.testResults ?? []
             return (
               <div className="space-y-3">
                 {/* Status banner */}
@@ -247,10 +248,15 @@ export function ConsolePanel({
                 )}
 
                 {/* Per-test breakdown */}
-                {lastResult.status !== 'UNAUTHORIZED' && lastResult.status !== 'DISPLAY_ONLY' && (
+                {lastResult.status !== 'UNAUTHORIZED' && lastResult.status !== 'DISPLAY_ONLY' && testResults.length > 0 && (
                   <div className="rounded-lg bg-muted p-3 font-mono text-xs space-y-1.5 border border-border/50">
                     {testCases.map((tc, idx) => {
-                      const passed = idx < lastResult.passedTests
+                      const result = testResults.find((item) => item.testCaseId === tc.id) ?? testResults[idx]
+                      if (!result) {
+                        return null
+                      }
+
+                      const passed = result.passed
                       return (
                         <div
                           key={tc.id || idx}

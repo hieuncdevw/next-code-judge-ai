@@ -11,6 +11,19 @@ export type SubmissionStatus =
   | 'UNAUTHORIZED'
   | 'DISPLAY_ONLY'
 
+export type TestCaseRunResult = {
+  testCaseId: string
+  status: SubmissionStatus
+  statusLabel: string
+  passed: boolean
+  input: string
+  expectedOutput: string
+  actualOutput?: string
+  runtime?: number
+  memory?: number
+  errorMessage?: string
+}
+
 export type SubmissionResult = {
   status: SubmissionStatus
   statusLabel: string
@@ -23,6 +36,7 @@ export type SubmissionResult = {
   passedTests: number
   totalTests: number
   submittedAt: string
+  testResults?: TestCaseRunResult[]
 }
 
 const languageIds: Record<string, number> = {
@@ -35,6 +49,22 @@ const languageIds: Record<string, number> = {
 
 const RAPIDAPI_SUBMIT_DELAY_MS = 1200
 const RAPIDAPI_POLL_DELAY_MS = 1000
+
+function getStatusLabel(status: SubmissionStatus): string {
+  return status
+    .toLowerCase()
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+function getSubmissionStatusFromJudge0(statusId: number): SubmissionStatus {
+  if (statusId === 3) return 'ACCEPTED'
+  if (statusId === 4) return 'WRONG_ANSWER'
+  if (statusId === 5) return 'TIME_LIMIT_EXCEEDED'
+  if (statusId === 6) return 'COMPILE_ERROR'
+  return 'RUNTIME_ERROR'
+}
 
 /**
  * Returns wrapped code with driver wrapper script to execute LeetCode style functions via stdin/stdout.
@@ -566,22 +596,41 @@ export async function runCode(payload: {
     let maxMemory = 0
     let failedStatus: SubmissionStatus | null = null
     let errorMessage: string | undefined = undefined
+    const testResults: TestCaseRunResult[] = []
 
     for (const res of results) {
-      if (res.statusId === 3) {
+      const testStatus = getSubmissionStatusFromJudge0(res.statusId)
+      const testErrorMessage = res.statusId !== 3
+        ? (res.stderr || res.compile_output || undefined)
+        : undefined
+
+      testResults.push({
+        testCaseId: res.testCase.id,
+        status: testStatus,
+        statusLabel: getStatusLabel(testStatus),
+        passed: testStatus === 'ACCEPTED',
+        input: res.testCase.input,
+        expectedOutput: res.testCase.expectedOutput,
+        actualOutput: res.stdout || undefined,
+        runtime: res.time !== undefined ? Math.round(res.time) : undefined,
+        memory: res.memory,
+        errorMessage: testErrorMessage,
+      })
+
+      if (testStatus === 'ACCEPTED') {
         passedTests++
       } else {
         if (!failedStatus) {
-          if (res.statusId === 4) {
-            failedStatus = 'WRONG_ANSWER'
+          if (testStatus === 'WRONG_ANSWER') {
+            failedStatus = testStatus
             errorMessage = `Wrong Answer on testcase.\nInput: ${res.testCase.input}\nOutput: ${res.stdout}\nExpected: ${res.testCase.expectedOutput}`
-          } else if (res.statusId === 5) {
-            failedStatus = 'TIME_LIMIT_EXCEEDED'
-          } else if (res.statusId === 6) {
-            failedStatus = 'COMPILE_ERROR'
+          } else if (testStatus === 'TIME_LIMIT_EXCEEDED') {
+            failedStatus = testStatus
+          } else if (testStatus === 'COMPILE_ERROR') {
+            failedStatus = testStatus
             errorMessage = res.compile_output || 'Compilation Error'
           } else {
-            failedStatus = 'RUNTIME_ERROR'
+            failedStatus = testStatus
             errorMessage = res.stderr || 'Runtime Error'
           }
         }
@@ -596,11 +645,7 @@ export async function runCode(payload: {
     }
 
     const overallStatus: SubmissionStatus = failedStatus || 'ACCEPTED'
-    const statusLabel = overallStatus
-      .toLowerCase()
-      .split('_')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ')
+    const statusLabel = getStatusLabel(overallStatus)
 
     // 4. Save Submission & TestCaseResults to database
     let finalSubmittedAt = submittedAt
@@ -619,11 +664,7 @@ export async function runCode(payload: {
           errorMessage: errorMessage || null,
           results: {
             create: results.map((res) => {
-              let tcStatus: PrismaStatus = 'RUNTIME_ERROR'
-              if (res.statusId === 3) tcStatus = 'ACCEPTED'
-              else if (res.statusId === 4) tcStatus = 'WRONG_ANSWER'
-              else if (res.statusId === 5) tcStatus = 'TIME_LIMIT_EXCEEDED'
-              else if (res.statusId === 6) tcStatus = 'COMPILE_ERROR'
+              const tcStatus = getSubmissionStatusFromJudge0(res.statusId) as PrismaStatus
 
               return {
                 testCaseId: res.testCase.id,
@@ -716,6 +757,7 @@ export async function runCode(payload: {
       passedTests: passedTests,
       totalTests: testCases.length,
       submittedAt: finalSubmittedAt,
+      testResults,
     }
   } catch (err: unknown) {
     console.error('[runCode] Judge0 execution failed:', err)

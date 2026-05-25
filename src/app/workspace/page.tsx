@@ -62,7 +62,7 @@ export default async function WorkspacePage({ searchParams }: WorkspacePageProps
             memory: sub.memoryKb ?? undefined,
             errorMessage: sub.errorMessage ?? undefined,
             passedTests: passed,
-            totalTests: total > 0 ? total : 2, // fallback
+            totalTests: total,
             submittedAt: sub.createdAt.toISOString(),
           }
         })

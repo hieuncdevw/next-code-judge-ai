@@ -61,7 +61,7 @@ export default async function ProblemDetailPage({ params }: Props) {
           </Link>
 
           <Button asChild size="sm" className="gap-2">
-            <Link href={`/workspace?problem=${problem.slug}`}>
+            <Link href={{ pathname: '/workspace', query: { problem: problem.slug } }}>
               <Code2 className="h-4 w-4" />
               Start Coding
             </Link>
