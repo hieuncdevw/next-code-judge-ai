@@ -16,6 +16,12 @@ type StatusConfig = {
   icon: React.ReactNode
 }
 
+type TestResult = NonNullable<SubmissionResult['testResults']>[number]
+
+function getTestResultLabel(result: TestResult, index: number): string {
+  return result.isSample === false ? `Hidden Test Case ${index + 1}` : `Test Case ${index + 1}`
+}
+
 function getStatusConfig(status: SubmissionResult['status']): StatusConfig {
   switch (status) {
     case 'ACCEPTED':
@@ -90,12 +96,17 @@ export function ConsolePanel({
   onSubmissionResult,
 }: ConsolePanelProps) {
   const [activeTab, setActiveTab] = useState('testcases')
-  const [lastResult, setLastResult] = useState<SubmissionResult | null>(null)
+  const [lastResultState, setLastResultState] = useState<{
+    problemKey: string
+    result: SubmissionResult
+  } | null>(null)
   // useTransition gives us isPending for free without managing a boolean
   const [isPending, startTransition] = useTransition()
 
   const problemId = problem?.id ?? ''
   const problemSlug = problem?.slug ?? ''
+  const problemKey = `${problemId}:${problemSlug}`
+  const lastResult = lastResultState?.problemKey === problemKey ? lastResultState.result : null
   const testCases: WorkspaceProblem['testCases'] =
     problem?.testCases?.filter((tc) => tc.isSample) || []
 
@@ -105,7 +116,7 @@ export function ConsolePanel({
     startTransition(async () => {
       try {
         const result = await runCode({ problemId, problemSlug, language, code })
-        setLastResult(result)
+        setLastResultState({ problemKey, result })
         onSubmissionResult(result)
       } catch (err) {
         console.error('[ConsolePanel] runCode failed:', err)
@@ -119,7 +130,7 @@ export function ConsolePanel({
           errorMessage: `Could not run code right now. Please check the judge service and try again.\n\nDetails: ${message}`,
           testResults: [],
         }
-        setLastResult(syntheticResult)
+        setLastResultState({ problemKey, result: syntheticResult })
         onSubmissionResult(syntheticResult)
       }
     })
@@ -266,21 +277,28 @@ export function ConsolePanel({
                 {/* Per-test breakdown */}
                 {lastResult.status !== 'UNAUTHORIZED' && lastResult.status !== 'DISPLAY_ONLY' && testResults.length > 0 && (
                   <div className="rounded-lg bg-muted p-3 font-mono text-xs space-y-1.5 border border-border/50">
-                    {testCases.map((tc, idx) => {
-                      const result = testResults.find((item) => item.testCaseId === tc.id) ?? testResults[idx]
-                      if (!result) {
-                        return null
-                      }
-
+                    {testResults.map((result, idx) => {
                       const passed = result.passed
+                      const label = getTestResultLabel(result, idx)
                       return (
                         <div
-                          key={tc.id || idx}
+                          key={result.testCaseId || idx}
                           className={passed
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : 'text-rose-600 dark:text-rose-400'}
                         >
-                          {passed ? '✓' : '✗'} Test Case {idx + 1}: {passed ? 'Passed' : 'Failed'}
+                          <div>
+                            {passed ? '✓' : '✗'} {label}: {result.statusLabel}
+                          </div>
+                          {result.isSample !== false && (
+                            <div className="mt-1 pl-4 text-muted-foreground space-y-0.5">
+                              <div>Input: {result.input.split('\n').join(', ')}</div>
+                              <div>Expected: {result.expectedOutput}</div>
+                              {result.actualOutput !== undefined && (
+                                <div>Actual: {result.actualOutput}</div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
