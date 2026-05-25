@@ -50,6 +50,9 @@ const languageIds: Record<string, number> = {
 
 const RAPIDAPI_SUBMIT_DELAY_MS = 1200
 const RAPIDAPI_POLL_DELAY_MS = 1000
+const HIDDEN_TEST_INPUT = '[Hidden test case]'
+const HIDDEN_EXPECTED_OUTPUT = '[Hidden expected output]'
+const HIDDEN_ACTUAL_OUTPUT = '[Hidden actual output]'
 
 interface LocalTestCase {
   id: string
@@ -714,12 +717,13 @@ export async function runCode(payload: {
             results: {
               create: results.map((res) => {
                 const tcStatus = getSubmissionStatusFromJudge0(res.statusId) as PrismaStatus
+                const isSample = res.testCase.isSample
 
                 return {
                   testCaseId: res.testCase.id,
-                  input: res.testCase.input,
-                  expectedOutput: res.testCase.expectedOutput,
-                  actualOutput: res.stdout || null,
+                  input: isSample ? res.testCase.input : HIDDEN_TEST_INPUT,
+                  expectedOutput: isSample ? res.testCase.expectedOutput : HIDDEN_EXPECTED_OUTPUT,
+                  actualOutput: isSample ? (res.stdout || null) : HIDDEN_ACTUAL_OUTPUT,
                   status: tcStatus,
                   runtimeMs: res.time !== undefined ? Math.round(res.time) : null,
                   memoryKb: res.memory || null,

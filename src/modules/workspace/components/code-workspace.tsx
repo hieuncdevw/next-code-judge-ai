@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -147,6 +147,12 @@ export function CodeWorkspace({ problem, initialSubmissions = [], isAuthenticate
 
   // Submission history shown in the Submissions tab
   const [submissions, setSubmissions] = useState<SubmissionResult[]>(initialSubmissions)
+  const activeProblemKey = problem ? `${problem.id}:${problem.slug}` : ''
+  const activeProblemKeyRef = useRef(activeProblemKey)
+
+  useEffect(() => {
+    activeProblemKeyRef.current = activeProblemKey
+  }, [activeProblemKey])
 
   // Sync state with server-side fetched submissions on problem change
   useEffect(() => {
@@ -154,8 +160,17 @@ export function CodeWorkspace({ problem, initialSubmissions = [], isAuthenticate
     setSubmissions(initialSubmissions)
   }, [initialSubmissions])
 
-  const handleSubmissionResult = useCallback((result: SubmissionResult) => {
-    setSubmissions((prev) => [result, ...prev])
+  const handleSubmissionResult = useCallback((payload: {
+    problemId: string
+    problemSlug: string
+    problemKey: string
+    result: SubmissionResult
+  }) => {
+    if (payload.problemKey !== activeProblemKeyRef.current) {
+      return
+    }
+
+    setSubmissions((prev) => [payload.result, ...prev])
   }, [])
 
 

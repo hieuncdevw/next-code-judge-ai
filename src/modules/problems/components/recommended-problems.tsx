@@ -15,8 +15,9 @@ interface RecommendedProblem {
 
 const recommendedProblems: RecommendedProblem[] = [
   {
-    id: 11,
-    title: 'Container With Most Water',
+    id: 53,
+    title: 'Maximum Subarray',
+    slug: 'maximum-subarray',
     difficulty: 'Medium',
     reason: 'Popular interview question',
   },

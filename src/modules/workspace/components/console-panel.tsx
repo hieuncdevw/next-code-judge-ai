@@ -85,7 +85,12 @@ interface ConsolePanelProps {
   /** Currently loaded problem */
   problem: WorkspaceProblem | null
   /** Called after each submission so CodeWorkspace can accumulate results */
-  onSubmissionResult: (result: SubmissionResult) => void
+  onSubmissionResult: (payload: {
+    problemId: string
+    problemSlug: string
+    problemKey: string
+    result: SubmissionResult
+  }) => void
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -121,7 +126,7 @@ export function ConsolePanel({
       try {
         const result = await runCode({ problemId, problemSlug, language, code })
         setLastResultState({ problemKey, result })
-        onSubmissionResult(result)
+        onSubmissionResult({ problemId, problemSlug, problemKey, result })
       } catch (err) {
         console.error('[ConsolePanel] runCode failed:', err)
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -135,7 +140,7 @@ export function ConsolePanel({
           testResults: [],
         }
         setLastResultState({ problemKey, result: syntheticResult })
-        onSubmissionResult(syntheticResult)
+        onSubmissionResult({ problemId, problemSlug, problemKey, result: syntheticResult })
       }
     })
   }
