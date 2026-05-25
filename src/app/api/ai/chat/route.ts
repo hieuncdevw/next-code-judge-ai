@@ -6,6 +6,217 @@ import { getCurrentUser } from '@/lib/auth'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
+type ChatProblem = { title: string; description: string }
+
+type ValidChatBody = {
+  messages: Message[]
+  problem: ChatProblem | null
+  code: string
+  language: string
+}
+
+const MAX_MESSAGES = 20
+const MAX_MESSAGE_CONTENT_LENGTH = 4000
+const MAX_CODE_LENGTH = 20000
+const MAX_PROBLEM_DESCRIPTION_LENGTH = 10000
+const MAX_LANGUAGE_LENGTH = 50
+const AI_RATE_LIMIT_MAX_REQUESTS = 20
+const AI_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000
+
+const aiRateLimitBuckets = new Map<string, { count: number; resetAt: number }>()
+
+function jsonError(error: string, message: string, status: number) {
+  return NextResponse.json({ error, message }, { status })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+async function parseJsonBody(request: NextRequest): Promise<{ ok: true; value: unknown } | { ok: false }> {
+  try {
+    return { ok: true, value: await request.json() }
+  } catch {
+    return { ok: false }
+  }
+}
+
+function validateChatBody(value: unknown):
+  | { ok: true; body: ValidChatBody }
+  | { ok: false; status: 400 | 413; error: string; message: string } {
+  if (!isRecord(value)) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'BAD_REQUEST',
+      message: 'Malformed request body.',
+    }
+  }
+
+  const rawMessages = value.messages ?? []
+  if (!Array.isArray(rawMessages)) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'BAD_REQUEST',
+      message: 'messages must be an array.',
+    }
+  }
+
+  if (rawMessages.length > MAX_MESSAGES) {
+    return {
+      ok: false,
+      status: 413,
+      error: 'PAYLOAD_TOO_LARGE',
+      message: `messages cannot contain more than ${MAX_MESSAGES} items.`,
+    }
+  }
+
+  const messages: Message[] = []
+  for (const rawMessage of rawMessages) {
+    if (!isRecord(rawMessage)) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'BAD_REQUEST',
+        message: 'Each message must be an object.',
+      }
+    }
+
+    if (rawMessage.role !== 'user' && rawMessage.role !== 'assistant') {
+      return {
+        ok: false,
+        status: 400,
+        error: 'BAD_REQUEST',
+        message: 'Message role must be user or assistant.',
+      }
+    }
+
+    if (typeof rawMessage.content !== 'string') {
+      return {
+        ok: false,
+        status: 400,
+        error: 'BAD_REQUEST',
+        message: 'Message content must be a string.',
+      }
+    }
+
+    if (rawMessage.content.length > MAX_MESSAGE_CONTENT_LENGTH) {
+      return {
+        ok: false,
+        status: 413,
+        error: 'PAYLOAD_TOO_LARGE',
+        message: `Message content cannot exceed ${MAX_MESSAGE_CONTENT_LENGTH} characters.`,
+      }
+    }
+
+    messages.push({
+      role: rawMessage.role,
+      content: rawMessage.content,
+    })
+  }
+
+  const rawProblem = value.problem ?? null
+  let problem: ChatProblem | null = null
+  if (rawProblem !== null) {
+    if (!isRecord(rawProblem) || typeof rawProblem.title !== 'string' || typeof rawProblem.description !== 'string') {
+      return {
+        ok: false,
+        status: 400,
+        error: 'BAD_REQUEST',
+        message: 'problem must include string title and description.',
+      }
+    }
+
+    if (rawProblem.description.length > MAX_PROBLEM_DESCRIPTION_LENGTH) {
+      return {
+        ok: false,
+        status: 413,
+        error: 'PAYLOAD_TOO_LARGE',
+        message: `Problem description cannot exceed ${MAX_PROBLEM_DESCRIPTION_LENGTH} characters.`,
+      }
+    }
+
+    problem = {
+      title: rawProblem.title,
+      description: rawProblem.description,
+    }
+  }
+
+  const code = value.code ?? ''
+  if (typeof code !== 'string') {
+    return {
+      ok: false,
+      status: 400,
+      error: 'BAD_REQUEST',
+      message: 'code must be a string.',
+    }
+  }
+
+  if (code.length > MAX_CODE_LENGTH) {
+    return {
+      ok: false,
+      status: 413,
+      error: 'PAYLOAD_TOO_LARGE',
+      message: `code cannot exceed ${MAX_CODE_LENGTH} characters.`,
+    }
+  }
+
+  const language = value.language ?? 'javascript'
+  if (typeof language !== 'string') {
+    return {
+      ok: false,
+      status: 400,
+      error: 'BAD_REQUEST',
+      message: 'language must be a string.',
+    }
+  }
+
+  if (language.length > MAX_LANGUAGE_LENGTH) {
+    return {
+      ok: false,
+      status: 413,
+      error: 'PAYLOAD_TOO_LARGE',
+      message: `language cannot exceed ${MAX_LANGUAGE_LENGTH} characters.`,
+    }
+  }
+
+  return {
+    ok: true,
+    body: {
+      messages,
+      problem,
+      code,
+      language,
+    },
+  }
+}
+
+function checkAiRateLimit(userId: string) {
+  const now = Date.now()
+  for (const [key, bucket] of aiRateLimitBuckets) {
+    if (bucket.resetAt <= now) {
+      aiRateLimitBuckets.delete(key)
+    }
+  }
+
+  const existing = aiRateLimitBuckets.get(userId)
+  if (!existing || existing.resetAt <= now) {
+    aiRateLimitBuckets.set(userId, {
+      count: 1,
+      resetAt: now + AI_RATE_LIMIT_WINDOW_MS,
+    })
+    return { allowed: true }
+  }
+
+  if (existing.count >= AI_RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false }
+  }
+
+  existing.count += 1
+  return { allowed: true }
+}
+
 function getMockReply(messages: Message[], problem: { title?: string } | null): string {
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
   const q = lastUser?.content.toLowerCase() ?? ''
@@ -44,17 +255,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json() as {
-      messages?: Message[]
-      problem?: { title: string; description: string } | null
-      code?: string
-      language?: string
+    const parsedBody = await parseJsonBody(request)
+    if (!parsedBody.ok) {
+      return jsonError('BAD_REQUEST', 'Invalid JSON request body.', 400)
     }
 
-    const messages = body.messages ?? []
-    const problem = body.problem ?? null
-    const code = body.code ?? ''
-    const language = body.language ?? 'javascript'
+    const validatedBody = validateChatBody(parsedBody.value)
+    if (!validatedBody.ok) {
+      return jsonError(validatedBody.error, validatedBody.message, validatedBody.status)
+    }
+
+    const rateLimit = checkAiRateLimit(user.id)
+    if (!rateLimit.allowed) {
+      return jsonError(
+        'RATE_LIMITED',
+        'Too many AI chat requests. Please try again later.',
+        429
+      )
+    }
+
+    const { messages, problem, code, language } = validatedBody.body
 
     const geminiApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY
     const hasGemini = !!geminiApiKey
@@ -94,15 +314,10 @@ Instructions:
 6. Use clean Markdown formatting. Keep replies under 300 words.
 `.trim()
 
-      const formattedMessages = messages.map((m) => ({
-        role: m.role as 'user' | 'assistant' | 'system',
-        content: m.content,
-      }))
-
       const result = await streamText({
         model,
         system: systemPrompt,
-        messages: formattedMessages,
+        messages,
       })
 
       return result.toTextStreamResponse()
