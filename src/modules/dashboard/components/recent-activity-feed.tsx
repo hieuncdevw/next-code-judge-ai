@@ -128,7 +128,7 @@ export function RecentActivityFeed({ submissions = defaultSubmissions, isAuthent
             return (
               <Link
                 key={submission.id}
-                href={`/workspace?problem=${submission.problemSlug}`}
+                href={{ pathname: '/workspace', query: { problem: submission.problemSlug } }}
                 className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">

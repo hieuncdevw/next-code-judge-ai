@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useTransition } from 'react'
+import { useState, useMemo, useEffect, useRef, useTransition } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
@@ -29,6 +29,7 @@ export function ProblemsPageClient({ problems, userProgress }: ProblemsPageClien
   const searchQuery = searchParams.get('search') || ''
   const selectedDifficulty = searchParams.get('difficulty') || ''
   const selectedTopic = searchParams.get('topic') || ''
+  const latestParamsRef = useRef(searchParams.toString())
 
   // Local state for the search input to prevent keystroke lag
   const [localSearch, setLocalSearch] = useState(searchQuery)
@@ -39,6 +40,10 @@ export function ProblemsPageClient({ problems, userProgress }: ProblemsPageClien
     setLocalSearch(searchQuery)
   }, [searchQuery])
 
+  useEffect(() => {
+    latestParamsRef.current = searchParams.toString()
+  }, [searchParams])
+
   // Helper to update query parameters in URL
   const updateFilters = (updates: {
     search?: string
@@ -46,7 +51,7 @@ export function ProblemsPageClient({ problems, userProgress }: ProblemsPageClien
     topic?: string
     page?: number
   }) => {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(latestParamsRef.current)
 
     if (updates.search !== undefined) {
       if (updates.search) {
@@ -84,6 +89,7 @@ export function ProblemsPageClient({ problems, userProgress }: ProblemsPageClien
     }
 
     const newParamsStr = params.toString()
+    latestParamsRef.current = newParamsStr
     const newUrl = newParamsStr ? `${pathname}?${newParamsStr}` : pathname
 
     startTransition(() => {

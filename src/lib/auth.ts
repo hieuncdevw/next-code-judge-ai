@@ -54,13 +54,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
           }
         } catch (dbErr) {
           console.warn('[getCurrentUser] Database profile sync failed (Prisma init or DB offline):', dbErr)
-          // Return in-memory fallback user using clerk details
-          return {
-            id: `mock-clerk-db-${clerkUserId}`,
-            clerkUserId,
-            email,
-            name,
-            avatarUrl,
+          if (isClerkConfigured) {
+            return null
           }
         }
       }
