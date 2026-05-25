@@ -35,7 +35,7 @@ export async function getUserProgress(): Promise<UserProgress> {
         });
         return {
           ...defaultProgress,
-          totalCount: totalCount > 0 ? totalCount : 15,
+          totalCount,
         };
       } catch {
         return defaultProgress;
@@ -89,7 +89,7 @@ export async function getUserProgress(): Promise<UserProgress> {
       return {
         isAuthenticated: true,
         solvedCount: solvedByProblemId.size,
-        totalCount: totalCount > 0 ? totalCount : 15,
+        totalCount,
         solvedByDifficulty,
       };
     } catch (err) {

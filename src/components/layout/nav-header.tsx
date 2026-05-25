@@ -28,7 +28,7 @@ const navLinks = [
 ]
 
 function isNavLinkActive(pathname: string, href: string) {
-  return href === '/home' ? pathname === '/home' : pathname.startsWith(href)
+  return href === '/home' ? pathname === '/home' : pathname === href || pathname.startsWith(`${href}/`)
 }
 
 export function NavHeader() {
