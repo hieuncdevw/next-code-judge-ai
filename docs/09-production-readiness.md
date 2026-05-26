@@ -148,3 +148,9 @@ Real Clerk session verification is blocked locally by `session-token-expired-ref
 Action before production:
 - Retest Clerk sign-in from a clean browser profile or a deployment domain.
 - Confirm a server auth check returns authenticated from that clean browser or deployment domain.
+
+DB migration: PASS
+Seed 15 problems: PASS
+DB persistence via local dev fallback: PASS
+Real Clerk browser session: BLOCKED / NEEDS RETEST
+Reason: Clerk local browser session returns session-token-expired-refresh-invalid-session-token.
