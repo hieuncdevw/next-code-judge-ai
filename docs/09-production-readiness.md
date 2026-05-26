@@ -131,26 +131,23 @@ Các mục dưới đây chưa bắt buộc cho bản dev/local hiện tại, nh
 - Chặn in-flight submission race khi user đổi problem trong lúc run đang chạy nếu cần nâng độ chắc chắn.
 - Refine `Button` / `Badge` `asChild` typing cho polymorphic props.
 
-### Clerk real-session verification
+### Xác minh Clerk real-session
 
-Status: BLOCKED / NEEDS RETEST
+Trạng thái: **NEEDS RETEST**
 
-Client-side Clerk UI can show a signed-in user, but server-side `auth()` currently returns signed-out in local browser testing. Diagnostics confirmed:
+Giao diện Clerk phía client có thể hiển thị user đã đăng nhập, nhưng xác thực phía server trong môi trường local vẫn trả về signed-out. Lý do gần nhất là `session-token-expired-refresh-invalid-session-token`.
 
-- `src/proxy.ts` is detected by Next.js 16.
-- Clerk middleware headers are present.
-- Clerk cookies reach the server.
-- Environment keys are set and both test-mode.
-- The latest server auth reason was `session-token-expired-refresh-invalid-session-token`.
+Kết luận hiện tại:
+- `src/proxy.ts` đã được Next.js 16 nhận diện.
+- Clerk middleware headers có mặt.
+- Clerk cookies đi tới server.
+- Env keys đã được cấu hình ở test mode.
+- Real Clerk browser session cần test lại bằng browser/profile sạch hoặc deployment domain.
 
-Real Clerk session verification is blocked locally by `session-token-expired-refresh-invalid-session-token`. This points to stale/corrupt local browser session data, revoked/invalid Clerk session, or local browser/session configuration rather than a known app wiring issue.
+### Tóm tắt trạng thái MVP hiện tại
 
-Action before production:
-- Retest Clerk sign-in from a clean browser profile or a deployment domain.
-- Confirm a server auth check returns authenticated from that clean browser or deployment domain.
-
-DB migration: PASS
-Seed 15 problems: PASS
-DB persistence via local dev fallback: PASS
-Real Clerk browser session: BLOCKED / NEEDS RETEST
-Reason: Clerk local browser session returns session-token-expired-refresh-invalid-session-token.
+- DB migration: **PASS**.
+- Seed 15 problems: **PASS**.
+- DB persistence via local dev fallback: **PASS**.
+- Real Clerk browser session: **NEEDS RETEST**.
+- Các finding Clawpatch còn lại được đưa vào backlog, gồm production hardening, shared storage cho AI rate limit, bổ sung test và các cải thiện UX/correctness.
