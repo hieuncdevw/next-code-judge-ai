@@ -20,3 +20,28 @@ export type WorkspaceProblem = {
     orderIndex: number
   }[]
 }
+
+export type WorkspaceSubmissionStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'WRONG_ANSWER'
+  | 'COMPILE_ERROR'
+  | 'RUNTIME_ERROR'
+  | 'TIME_LIMIT_EXCEEDED'
+  | 'MEMORY_LIMIT_EXCEEDED'
+  | 'INTERNAL_ERROR'
+  | 'UNAUTHORIZED'
+  | 'DISPLAY_ONLY'
+
+export type WorkspaceSubmission = {
+  id?: string
+  status: WorkspaceSubmissionStatus
+  statusLabel: string
+  language: string
+  runtime?: number
+  memory?: number
+  errorMessage?: string
+  passedTests: number
+  totalTests: number
+  submittedAt: string
+}

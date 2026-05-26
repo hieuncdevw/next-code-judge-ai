@@ -89,6 +89,7 @@ interface ConsolePanelProps {
     problemId: string
     problemSlug: string
     problemKey: string
+    language: string
     result: SubmissionResult
   }) => void
 }
@@ -127,7 +128,7 @@ export function ConsolePanel({
       try {
         const result = await runCode({ problemId, problemSlug, language, code })
         setLastResultState({ problemKey, result })
-        onSubmissionResult({ problemId, problemSlug, problemKey, result })
+        onSubmissionResult({ problemId, problemSlug, problemKey, language, result })
       } catch (err) {
         console.error('[ConsolePanel] runCode failed:', err)
         const message = err instanceof Error ? err.message : 'Unknown error'
@@ -141,7 +142,7 @@ export function ConsolePanel({
           testResults: [],
         }
         setLastResultState({ problemKey, result: syntheticResult })
-        onSubmissionResult({ problemId, problemSlug, problemKey, result: syntheticResult })
+        onSubmissionResult({ problemId, problemSlug, problemKey, language, result: syntheticResult })
       }
     })
   }

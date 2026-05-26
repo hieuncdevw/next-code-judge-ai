@@ -4,8 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Check, X, Clock, Cpu, Lock, Info } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import type { WorkspaceProblem } from '@/modules/workspace/types/workspace-problem'
-import type { SubmissionResult } from '@/modules/workspace/actions/run-code'
+import type { WorkspaceProblem, WorkspaceSubmission, WorkspaceSubmissionStatus } from '@/modules/workspace/types/workspace-problem'
 
 // ── Difficulty badge helper ──────────────────────────────────────────────────
 function getDifficultyColor(difficulty: string) {
@@ -22,13 +21,16 @@ function getDifficultyColor(difficulty: string) {
 }
 
 // ── Submission status badge ──────────────────────────────────────────────────
-function SubmissionStatusBadge({ status, label }: { status: SubmissionResult['status']; label: string }) {
-  const colorMap: Record<SubmissionResult['status'], string> = {
+function SubmissionStatusBadge({ status, label }: { status: WorkspaceSubmissionStatus; label: string }) {
+  const colorMap: Record<WorkspaceSubmissionStatus, string> = {
+    PENDING: 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200',
     ACCEPTED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
     WRONG_ANSWER: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200',
     COMPILE_ERROR: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
     RUNTIME_ERROR: 'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
     TIME_LIMIT_EXCEEDED: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
+    MEMORY_LIMIT_EXCEEDED: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200',
+    INTERNAL_ERROR: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200',
     UNAUTHORIZED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200',
     DISPLAY_ONLY: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200',
   }
@@ -52,7 +54,7 @@ function SubmissionStatusBadge({ status, label }: { status: SubmissionResult['st
 interface ProblemPanelProps {
   problem: WorkspaceProblem | null
   /** Submission history accumulated by CodeWorkspace */
-  submissions: SubmissionResult[]
+  submissions: WorkspaceSubmission[]
   isAuthenticated?: boolean
 }
 
@@ -241,8 +243,12 @@ export function ProblemPanel({ problem, submissions, isAuthenticated = false }: 
                 </div>
 
                 {/* Row 2: runtime + memory (if available) */}
-                {(sub.runtime !== undefined || sub.memory !== undefined) && (
-                  <div className="flex gap-4 text-xs text-muted-foreground">
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span className="font-medium uppercase tracking-wide">
+                    {sub.language}
+                  </span>
+                  {(sub.runtime !== undefined || sub.memory !== undefined) && (
+                    <>
                     {sub.runtime !== undefined && (
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -255,11 +261,12 @@ export function ProblemPanel({ problem, submissions, isAuthenticated = false }: 
                         {Math.round(sub.memory / 1024)} MB
                       </span>
                     )}
+                    </>
+                  )}
                     <span className="ml-auto">
                       {sub.passedTests}/{sub.totalTests} tests
                     </span>
-                  </div>
-                )}
+                </div>
 
                 {/* Row 3: error message (if any) */}
                 {sub.errorMessage && (

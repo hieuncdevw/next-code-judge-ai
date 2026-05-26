@@ -10,7 +10,7 @@ import { ProblemPanel } from './problem-panel'
 import { EditorPanel } from './editor-panel'
 import { ConsolePanel } from './console-panel'
 import { AIChatPanel } from '@/modules/ai/components/ai-chat-panel'
-import type { WorkspaceProblem } from '@/modules/workspace/types/workspace-problem'
+import type { WorkspaceProblem, WorkspaceSubmission } from '@/modules/workspace/types/workspace-problem'
 import type { SubmissionResult } from '@/modules/workspace/actions/run-code'
 
 function getDefaultCode(slug: string, language: string): string {
@@ -122,7 +122,7 @@ function getDifficultyColor(difficulty: string) {
 
 interface CodeWorkspaceProps {
   problem: WorkspaceProblem | null
-  initialSubmissions?: SubmissionResult[]
+  initialSubmissions?: WorkspaceSubmission[]
   isAuthenticated?: boolean
 }
 
@@ -146,7 +146,7 @@ export function CodeWorkspace({ problem, initialSubmissions = [], isAuthenticate
   }, [templateKey])
 
   // Submission history shown in the Submissions tab
-  const [submissions, setSubmissions] = useState<SubmissionResult[]>(initialSubmissions)
+  const [submissions, setSubmissions] = useState<WorkspaceSubmission[]>(initialSubmissions)
   const activeProblemKey = problem ? `${problem.id}:${problem.slug}` : ''
   const activeProblemKeyRef = useRef(activeProblemKey)
 
@@ -164,13 +164,20 @@ export function CodeWorkspace({ problem, initialSubmissions = [], isAuthenticate
     problemId: string
     problemSlug: string
     problemKey: string
+    language: string
     result: SubmissionResult
   }) => {
     if (payload.problemKey !== activeProblemKeyRef.current) {
       return
     }
 
-    setSubmissions((prev) => [payload.result, ...prev])
+    setSubmissions((prev) => [
+      {
+        ...payload.result,
+        language: payload.language,
+      },
+      ...prev,
+    ])
   }, [])
 
 
