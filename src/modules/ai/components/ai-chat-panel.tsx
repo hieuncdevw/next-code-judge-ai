@@ -9,6 +9,8 @@ import type { WorkspaceProblem } from '@/modules/workspace/types/workspace-probl
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
+const MAX_DESCRIPTION_SUMMARY_LENGTH = 2000
+
 interface AIChatPanelProps {
   onClose: () => void
   problem: WorkspaceProblem | null
@@ -20,6 +22,24 @@ function isAbortError(err: unknown) {
   return err instanceof DOMException
     ? err.name === 'AbortError'
     : err instanceof Error && err.name === 'AbortError'
+}
+
+function getProblemContext(problem: WorkspaceProblem | null) {
+  if (!problem) {
+    return null
+  }
+
+  const descriptionSummary = problem.description
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_DESCRIPTION_SUMMARY_LENGTH)
+
+  return {
+    title: problem.title,
+    slug: problem.slug,
+    difficulty: problem.difficulty,
+    descriptionSummary,
+  }
 }
 
 export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelProps) {
@@ -87,7 +107,7 @@ export function AIChatPanel({ onClose, problem, code, language }: AIChatPanelPro
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: nextMessages,
-          problem: problem ? { title: problem.title, description: problem.description } : null,
+          problem: getProblemContext(problem),
           code,
           language,
         }),

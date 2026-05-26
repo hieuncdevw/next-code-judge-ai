@@ -7,7 +7,12 @@ import { getCurrentUser } from '@/lib/auth'
 type Message = { role: 'user' | 'assistant'; content: string }
 type ChatLanguage = 'javascript' | 'python' | 'unknown'
 
-type ChatProblem = { title: string; description: string }
+type ChatProblem = {
+  title: string
+  slug: string
+  difficulty: string
+  descriptionSummary: string
+}
 
 type ValidChatBody = {
   messages: Message[]
@@ -20,7 +25,7 @@ const MAX_MESSAGES = 20
 const MAX_RAW_BODY_BYTES = 64 * 1024
 const MAX_MESSAGE_CONTENT_LENGTH = 4000
 const MAX_CODE_LENGTH = 20000
-const MAX_PROBLEM_DESCRIPTION_LENGTH = 10000
+const MAX_PROBLEM_DESCRIPTION_SUMMARY_LENGTH = 2000
 const MAX_LANGUAGE_LENGTH = 50
 const AI_RATE_LIMIT_MAX_REQUESTS = 20
 const AI_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000
@@ -51,7 +56,9 @@ function getContextMessage(problem: ChatProblem | null, code: string, language: 
       problem: problem
         ? {
           title: problem.title,
-          description: problem.description,
+          slug: problem.slug,
+          difficulty: problem.difficulty,
+          descriptionSummary: problem.descriptionSummary,
         }
         : null,
       language,
@@ -156,27 +163,38 @@ function validateChatBody(value: unknown):
   const rawProblem = value.problem ?? null
   let problem: ChatProblem | null = null
   if (rawProblem !== null) {
-    if (!isRecord(rawProblem) || typeof rawProblem.title !== 'string' || typeof rawProblem.description !== 'string') {
+    if (!isRecord(rawProblem) || typeof rawProblem.title !== 'string') {
       return {
         ok: false,
         status: 400,
         error: 'BAD_REQUEST',
-        message: 'problem must include string title and description.',
+        message: 'problem must include a string title.',
       }
     }
 
-    if (rawProblem.description.length > MAX_PROBLEM_DESCRIPTION_LENGTH) {
+    const slug = typeof rawProblem.slug === 'string' ? rawProblem.slug : ''
+    const difficulty = typeof rawProblem.difficulty === 'string' ? rawProblem.difficulty : ''
+    const descriptionSummary =
+      typeof rawProblem.descriptionSummary === 'string'
+        ? rawProblem.descriptionSummary
+        : typeof rawProblem.description === 'string'
+          ? rawProblem.description
+          : ''
+
+    if (descriptionSummary.length > MAX_PROBLEM_DESCRIPTION_SUMMARY_LENGTH) {
       return {
         ok: false,
         status: 413,
         error: 'PAYLOAD_TOO_LARGE',
-        message: `Problem description cannot exceed ${MAX_PROBLEM_DESCRIPTION_LENGTH} characters.`,
+        message: `Problem description summary cannot exceed ${MAX_PROBLEM_DESCRIPTION_SUMMARY_LENGTH} characters.`,
       }
     }
 
     problem = {
       title: rawProblem.title,
-      description: rawProblem.description,
+      slug,
+      difficulty,
+      descriptionSummary,
     }
   }
 
