@@ -23,7 +23,7 @@ function SignedOut({ children }: { children: ReactNode }) {
 const navLinks = [
   { href: '/home', label: 'Home' },
   { href: '/problems', label: 'Problems' },
-  // { href: '/discuss', label: 'Discuss' },
+  { href: '/discuss', label: 'Discuss' },
   { href: '/workspace', label: 'Workspace' },
 ]
 
