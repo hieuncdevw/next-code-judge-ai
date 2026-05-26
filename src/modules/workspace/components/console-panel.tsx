@@ -5,7 +5,7 @@ import { Play, Check, X, Loader2, Clock, Cpu, Lock, Info } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { runCode, type SubmissionResult } from '@/modules/workspace/actions/run-code'
-import { SignInButton } from '@clerk/nextjs'
+import { useAuth, SignInButton } from '@clerk/nextjs'
 import type { WorkspaceProblem } from '@/modules/workspace/types/workspace-problem'
 
 // ── Status helpers ───────────────────────────────────────────────────────────
@@ -100,6 +100,7 @@ export function ConsolePanel({
   problem,
   onSubmissionResult,
 }: ConsolePanelProps) {
+  const { userId: clientUserId } = useAuth()
   const [activeTab, setActiveTab] = useState('testcases')
   const [lastResultState, setLastResultState] = useState<{
     problemKey: string
@@ -264,14 +265,16 @@ export function ConsolePanel({
                       <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed font-medium">
                         {lastResult.errorMessage}
                       </p>
-                      <SignInButton mode="modal">
-                        <Button
-                          size="sm"
-                          className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg shrink-0 self-start md:self-auto"
-                        >
-                          Đăng nhập
-                        </Button>
-                      </SignInButton>
+                      {!clientUserId && (
+                        <SignInButton mode="modal">
+                          <Button
+                            size="sm"
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg shrink-0 self-start md:self-auto"
+                          >
+                            Đăng nhập
+                          </Button>
+                        </SignInButton>
+                      )}
                     </div>
                   ) : lastResult.status === 'DISPLAY_ONLY' ? (
                     <div className="rounded-lg border border-blue-200/60 bg-blue-50/40 p-4 dark:border-blue-800/40 dark:bg-blue-950/10 flex items-start gap-3">

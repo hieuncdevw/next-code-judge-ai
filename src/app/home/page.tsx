@@ -17,6 +17,8 @@ export const metadata = {
   description: 'Your learning dashboard for coding problems',
 }
 
+export const dynamic = 'force-dynamic'
+
 function formatRelativeTime(createdAt: Date): string {
   const diffMs = Date.now() - createdAt.getTime()
   const diffMins = Math.floor(diffMs / 60000)

@@ -8,6 +8,8 @@ export const metadata = {
   description: 'Browse and solve coding challenges',
 }
 
+export const dynamic = 'force-dynamic'
+
 import { Suspense } from 'react'
 
 export default async function ProblemsPage() {

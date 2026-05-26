@@ -19,30 +19,29 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   const isClerkConfigured = !!(clerkPublishableKey && clerkSecretKey)
 
   try {
-    const session = await auth()
-    const clerkUserId = session.userId
+    const { isAuthenticated, userId } = await auth()
 
-    if (clerkUserId) {
+    if (isAuthenticated && userId) {
       const user = await currentUser()
       if (user) {
         const email = user.primaryEmailAddress?.emailAddress
           || user.emailAddresses.find((emailAddress) => emailAddress.id === user.primaryEmailAddressId)?.emailAddress
           || user.emailAddresses[0]?.emailAddress
-          || `${clerkUserId}@example.com`
+          || `${userId}@example.com`
         const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User'
         const avatarUrl = user.imageUrl || null
 
         try {
           const { prisma } = await import('@/lib/prisma')
           const dbUser = await prisma.userProfile.upsert({
-            where: { clerkUserId },
+            where: { clerkUserId: userId },
             update: {
               email,
               name,
               avatarUrl,
             },
             create: {
-              clerkUserId,
+              clerkUserId: userId,
               email,
               name,
               avatarUrl,

@@ -130,3 +130,21 @@ Các mục dưới đây chưa bắt buộc cho bản dev/local hiện tại, nh
 - Cải thiện debounce search URL sync để tránh race với typing nhanh.
 - Chặn in-flight submission race khi user đổi problem trong lúc run đang chạy nếu cần nâng độ chắc chắn.
 - Refine `Button` / `Badge` `asChild` typing cho polymorphic props.
+
+### Clerk real-session verification
+
+Status: BLOCKED / NEEDS RETEST
+
+Client-side Clerk UI can show a signed-in user, but server-side `auth()` currently returns signed-out in local browser testing. Diagnostics confirmed:
+
+- `src/proxy.ts` is detected by Next.js 16.
+- Clerk middleware headers are present.
+- Clerk cookies reach the server.
+- Environment keys are set and both test-mode.
+- The latest server auth reason was `session-token-expired-refresh-invalid-session-token`.
+
+Real Clerk session verification is blocked locally by `session-token-expired-refresh-invalid-session-token`. This points to stale/corrupt local browser session data, revoked/invalid Clerk session, or local browser/session configuration rather than a known app wiring issue.
+
+Action before production:
+- Retest Clerk sign-in from a clean browser profile or a deployment domain.
+- Confirm a server auth check returns authenticated from that clean browser or deployment domain.

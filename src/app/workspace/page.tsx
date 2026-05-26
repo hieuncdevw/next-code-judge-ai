@@ -10,6 +10,8 @@ export const metadata = {
   description: 'Interactive code editor and problem solver',
 }
 
+export const dynamic = 'force-dynamic'
+
 interface WorkspacePageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
